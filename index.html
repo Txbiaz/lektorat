@@ -132,8 +132,30 @@ button { cursor: pointer; }
 .chap .t small { color: var(--ink-3); font-size: 13px; }
 .count { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; color: var(--ink-2); font-variant-numeric: tabular-nums; min-width: 38px; }
 .count.has { color: var(--ink); font-weight: 600; }
-.wn { font-size: 12px; color: var(--ink-3); min-width: 64px; text-align: right; }
-.wn.on { color: var(--st-erledigt); }
+.wn { font-size: 12px; color: var(--ink-3); min-width: 64px; text-align: right; white-space: nowrap; }
+.wn.same { color: var(--st-erledigt); }
+.wn.old { color: var(--st-in-arbeit); }
+.wn.diff { color: var(--danger); }
+.worktabs { display: flex; gap: 6px; overflow-x: auto; padding: 2px 2px 6px; margin: 0 0 22px; scrollbar-width: thin; }
+.wtab { flex: none; display: inline-flex; align-items: center; gap: 6px; padding: 6px 13px; border-radius: 999px; border: 1px solid var(--line-strong);
+  background: var(--surface); color: var(--ink-2); text-decoration: none; font-size: 14px; white-space: nowrap; }
+.wtab:hover { color: var(--ink); border-color: var(--ink-3); }
+.wtab.on { background: var(--ink); border-color: var(--ink); color: var(--bg); font-weight: 600; }
+.wtab .n { font-size: 11.5px; font-weight: 700; background: var(--accent); color: var(--accent-ink); border-radius: 999px; padding: 0 6px; line-height: 17px; }
+.wtab.add { border-style: dashed; }
+.story-head .tools { margin-left: auto; display: flex; gap: 6px; align-items: center; }
+.story-head .tools a { font-size: 14px; }
+dialog.dlg { border: 1px solid var(--line); border-radius: 16px; padding: 22px; background: var(--surface); color: var(--ink);
+  width: min(480px, calc(100vw - 32px)); box-shadow: var(--shadow); }
+dialog.dlg::backdrop { background: rgba(0, 0, 0, .4); }
+.dlg h2 { font: 600 21px/1.3 var(--text-font); margin: 0 0 6px; }
+.dlg label { display: block; font-weight: 600; font-size: 14px; margin: 14px 0 0; }
+.dlg label small { display: block; font-weight: 400; color: var(--ink-3); font-size: 12.5px; }
+.dlg input { display: block; width: 100%; margin-top: 5px; border: 1px solid var(--line-strong); background: var(--bg); border-radius: 9px; padding: 8px 10px; font-weight: 400; }
+.dlg input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+.dlg input[type="number"] { width: 96px; }
+.dlg .err { color: var(--danger); font-size: 14px; min-height: 1.3em; margin-top: 12px; }
+.dlg code { background: var(--surface-2); padding: 1px 5px; border-radius: 5px; font-size: 13px; }
 .pill { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; padding: 2px 9px 2px 8px; border-radius: 999px;
   color: var(--c, var(--ink-2)); background: color-mix(in srgb, var(--c, var(--ink-3)) 13%, transparent); white-space: nowrap; }
 .pill::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
@@ -374,10 +396,11 @@ async function loadAll() {
       const sha = S.files.get(`${id}/${key}/comments.json`);
       comments[key] = sha ? (JSON.parse(await blob(sha)).comments || []) : [];
     }));
-    let wn = null;
+    let wn = null;  // written hourly by the stats run: which chapters are online, which version they match
     if (index.webnovel_book_id) {
-      try { wn = JSON.parse((await readFile(`chapters/${index.webnovel_book_id}.json`, CFG.statsBranch)).text); }
+      try { wn = JSON.parse((await readFile(`lektorat/${id}.json`, CFG.statsBranch)).text); }
       catch { wn = null; }
+      if (wn && String(wn.book_id) !== String(index.webnovel_book_id)) wn = null;  // link changed since
     }
     stories[id] = { id, index, comments, wn };
   }));
@@ -390,9 +413,30 @@ function chaptersOf(st) {
 const lastVersion = ch => (ch.versions || [])[ch.versions.length - 1] || {};
 const openOf = list => (list || []).filter(c => (c.status || "offen") === "offen");
 function webnovelInfo(st, key) {
-  if (!st.wn) return null;
-  const idx = num(key) + (parseInt(st.index.webnovel_offset, 10) || 0);
-  return (st.wn.chapters || []).find(c => c.index === idx) || false;
+  if (!st.wn || (parseInt(st.wn.offset, 10) || 0) !== (parseInt(st.index.webnovel_offset, 10) || 0)) return null;
+  return (st.wn.chapters || {})[key] || false;
+}
+function wnBadge(st, key) {
+  const w = webnovelInfo(st, key);
+  if (w === null) return st.index.webnovel_book_id
+    ? `<span class="wn" title="Wird beim nächsten stündlichen Abgleich geprüft">wird geprüft</span>` : `<span class="wn"></span>`;
+  if (w === false) return `<span class="wn">nicht online</span>`;
+  const latest = lastVersion(st.index.chapters[key]).v;
+  if (w.same_as && w.same_as === latest) return `<span class="wn same" title="Auf WebNovel steht genau Version ${latest}">online · v${latest} ✓</span>`;
+  if (w.same_as) return `<span class="wn old" title="Auf WebNovel steht Version ${w.same_as}, neuer ist v${latest}">online · v${w.same_as}, neu v${latest}</span>`;
+  if (w.similarity != null) return `<span class="wn diff" title="Keine Version stimmt genau; am nächsten ist v${w.closest}">weicht ab · ${Math.round(w.similarity * 100)} %</span>`;
+  return `<span class="wn same">online</span>`;
+}
+function wnSentence(st, key, v) {
+  const w = webnovelInfo(st, key);
+  if (!w) return "";
+  const latest = lastVersion(st.index.chapters[key]).v;
+  const date = w.published ? ` seit ${new Date(w.published.replace("Z", ":00Z")).toLocaleDateString("de-DE")}` : "";
+  let what = "Text noch nicht abgeglichen";
+  if (w.same_as) what = w.same_as === latest ? `entspricht genau Version ${latest}, der neuesten` : `entspricht Version ${w.same_as}; Version ${latest} ist dort noch nicht eingespielt`;
+  else if (w.similarity != null) what = `weicht von allen Versionen ab, am nächsten an Version ${w.closest} (${Math.round(w.similarity * 100)} % der Absätze gleich)`;
+  const link = w.id ? ` · <a href="https://www.webnovel.com/book/${esc(st.index.webnovel_book_id)}/${esc(w.id)}" target="_blank" rel="noopener">öffnen</a>` : "";
+  return `<div class="vnote">Auf WebNovel als Kapitel ${w.index}${date}: ${what}${link}</div>`;
 }
 const isAuthor = st => same(st.index.author, S.user?.login);
 
@@ -484,11 +528,17 @@ function route(keep = false) {
 window.addEventListener("hashchange", () => route());
 
 /* ---------------- overview ---------------- */
+const TAB_KEY = "lektorat.tab";
 function renderOverview(focus) {
   view = { type: "overview" };
   const me = S.user.login;
+  const all = Object.values(S.stories).sort((a, b) => (a.index.title || a.id).localeCompare(b.index.title || b.id));
+  let tab = focus && S.stories[focus] ? focus : (store.get(TAB_KEY) || "alle");
+  if (tab !== "alle" && !S.stories[tab]) tab = "alle";
+  store.set(TAB_KEY, tab);
+  const shown = tab === "alle" ? all : [S.stories[tab]];
   const toRead = [], forMe = [];
-  for (const st of Object.values(S.stories)) {
+  for (const st of shown) {
     for (const [key, ch] of chaptersOf(st)) {
       const lv = lastVersion(ch);
       if (!isAuthor(st) && ["eingereicht", "ueberarbeitet", "in-arbeit"].includes(ch.state)) toRead.push({ st, key, ch, lv });
@@ -501,12 +551,21 @@ function renderOverview(focus) {
   forMe.sort((a, b) => (b.last || "").localeCompare(a.last || ""));
   const item = (x, right, small) => `<li><a class="item" href="#/${encodeURIComponent(x.st.id)}/${x.key}">
       <span class="t">${esc(x.lv.title || x.key)}<small>${esc(small)}</small></span>${right}</a></li>`;
-  const stories = Object.values(S.stories).sort((a, b) => (a.index.title || a.id).localeCompare(b.index.title || b.id));
+  const todo = st => chaptersOf(st).filter(([k, ch]) => isAuthor(st)
+    ? openOf(st.comments[k]).some(c => !same(c.by, me))
+    : ["eingereicht", "ueberarbeitet", "in-arbeit"].includes(ch.state)).length;
+  const tabs = `<nav class="worktabs" aria-label="Werke">
+      <a class="wtab ${tab === "alle" ? "on" : ""}" href="#/" data-tab="alle">Alle</a>
+      ${all.map(st => { const n = todo(st); return `<a class="wtab ${tab === st.id ? "on" : ""}" href="#/${encodeURIComponent(st.id)}" data-tab="${esc(st.id)}"
+        title="${esc(st.index.title || st.id)} von ${esc(st.index.author || "?")}">${esc(st.index.title || st.id)}${n ? `<span class="n" title="${isAuthor(st) ? "Kapitel mit neuen Kommentaren" : "Kapitel zu lesen"}">${n}</span>` : ""}</a>`; }).join("")}
+      <button class="wtab add" id="newwork" type="button">+ Neues Werk</button>
+    </nav>`;
   $("#app").innerHTML = `
   <div class="page">
     <h1>Hallo ${esc(me)}</h1>
-    <p class="sub">${stories.length ? `${stories.length} ${stories.length === 1 ? "Geschichte" : "Geschichten"} im Lektorat.` : ""}
+    <p class="sub">${all.length ? `${all.length} ${all.length === 1 ? "Werk" : "Werke"} im Lektorat.` : ""}
       Neue Kapitel lädt Claude hoch („Lade Kapitel 7 ins Lektorat“).</p>
+    ${tabs}
     <div class="foryou">
       <div class="panel"><h2>Für dich zu lesen${toRead.length ? ` · ${toRead.length}` : ""}</h2>${toRead.length ? `<ul>${toRead.slice(0, 5).map(x => item(x, pill(x.ch.state),
         `${x.st.index.title || x.st.id} · ${x.key} · v${x.lv.v} · ${x.lv.words || "?"} Wörter`)).join("")}</ul>
@@ -516,10 +575,18 @@ function renderOverview(focus) {
         `<span class="count has">${commentIcon()}${x.n}</span>`, `${x.st.index.title || x.st.id} · ${x.key} · zuletzt ${when(x.last)}`)).join("")}</ul>`
         : `<div class="empty">Keine offenen Kommentare.</div>`}</div>
     </div>
-    ${stories.map(storyBlock).join("") || `<div class="empty">Noch keine Geschichte hochgeladen.</div>`}
+    ${shown.map(storyBlock).join("") || `<div class="empty">Noch kein Werk. Leg oben mit „+ Neues Werk“ eins an.</div>`}
   </div>`;
-  if (focus) document.getElementById(`s-${focus}`)?.scrollIntoView();
-  else window.scrollTo(0, 0);
+  $$(".worktabs [data-tab]").forEach(a => a.addEventListener("click", e => {
+    e.preventDefault();
+    store.set(TAB_KEY, a.dataset.tab);
+    const target = a.getAttribute("href");
+    if (location.hash === target || (target === "#/" && !location.hash)) renderOverview(); else location.hash = target;
+  }));
+  $("#newwork").addEventListener("click", () => workDialog());
+  $$("[data-edit]").forEach(b => b.addEventListener("click", () => workDialog(S.stories[b.dataset.edit])));
+  $(".worktabs .on")?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  window.scrollTo(0, 0);
 }
 function commentIcon() {
   return `<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg>`;
@@ -529,20 +596,113 @@ function storyBlock(st) {
   const rows = chaptersOf(st).map(([key, ch]) => {
     const lv = lastVersion(ch);
     const open = openOf(st.comments[key]).length;
-    const w = webnovelInfo(st, key);
-    const wn = w ? `<span class="wn on">online</span>` : (w === false ? `<span class="wn">nicht online</span>` : `<span class="wn"></span>`);
     return `<a class="chap" href="#/${encodeURIComponent(st.id)}/${key}">
       <span class="n">${key === "ch00" ? "Prolog" : num(key)}</span>
       <span class="t"><b>${esc(lv.title || key)}</b><small>v${lv.v || "?"} · ${esc((lv.date || "").slice(0, 10).split("-").reverse().join("."))} · ${lv.words || "?"} Wörter</small></span>
       <span class="count ${open ? "has" : ""}" title="offene Kommentare">${commentIcon()}${open}</span>
-      ${pill(ch.state)}${wn}</a>`;
+      ${pill(ch.state)}${wnBadge(st, key)}</a>`;
   }).join("");
   const total = chaptersOf(st).reduce((n, [k]) => n + openOf(st.comments[k]).length, 0);
+  const bid = st.index.webnovel_book_id;
+  const online = st.wn ? ` · ${st.wn.online || 0} Kapitel auf WebNovel` : "";
   return `<section class="story" id="s-${esc(st.id)}">
     <div class="story-head"><h3>${esc(st.index.title || st.id)}</h3>
-      <span class="meta">von ${esc(st.index.author || "?")} · ${chaptersOf(st).length} Kapitel · ${total} offene Kommentare</span></div>
-    <div class="chapters">${rows || `<div class="chap"><span></span><span class="t">Noch keine Kapitel.</span></div>`}</div>
+      <span class="meta">von ${esc(st.index.author || "?")} · ${chaptersOf(st).length} Kapitel hochgeladen${online} · ${total} offene Kommentare</span>
+      <span class="tools">${bid ? `<a href="https://www.webnovel.com/book/${esc(bid)}" target="_blank" rel="noopener">WebNovel</a>` : ""}
+        <button class="btn ghost small" data-edit="${esc(st.id)}" type="button">Bearbeiten</button></span></div>
+    <div class="chapters">${rows || `<div class="chap"><span></span><span class="t">Noch keine Kapitel. Claude lädt sie hoch:
+      „Lade Kapitel 1 von ${esc(st.index.title || st.id)} ins Lektorat“.</span></div>`}</div>
   </section>`;
+}
+
+/* ---------------- create / edit a work ---------------- */
+function slugify(t) {
+  return t.toLowerCase().replace(/ä/g, "ae").replace(/ö/g, "oe").replace(/ü/g, "ue").replace(/ß/g, "ss")
+    .normalize("NFKD").replace(/\p{M}/gu, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40);
+}
+function bookIdFrom(link) {
+  link = (link || "").trim();
+  const m = link.match(/\/book\/(?:[^/?#]*?_)?(\d{8,})/) || link.match(/^(\d{8,})$/);
+  return m ? m[1] : "";
+}
+function workDialog(st = null) {
+  const idx = st?.index;
+  const dlg = document.createElement("dialog");
+  dlg.className = "dlg";
+  dlg.innerHTML = `<form id="workform" novalidate>
+    <h2>${st ? "Werk bearbeiten" : "Neues Werk"}</h2>
+    ${st ? `<p class="note">Ordner <code>${esc(st.id)}</code> · Autor ${esc(idx.author || "?")}</p>`
+      : `<p class="note">Du bist der Autor. Kapitel lädt danach Claude hoch.</p>`}
+    <label>Titel<input name="title" required maxlength="120" value="${esc(idx?.title || "")}"></label>
+    ${st ? "" : `<label>Ordner<small>So heißt die Story unter <code>stories/</code> in eurem Repo, damit Claude sie findet.</small>
+      <input name="slug" required maxlength="40" pattern="[a-z0-9][a-z0-9-]*" spellcheck="false"></label>`}
+    <label>WebNovel-Link<small>Leer lassen, solange das Werk nicht online ist. Später hier nachtragen.</small>
+      <input name="link" inputmode="url" spellcheck="false" placeholder="https://www.webnovel.com/book/…"
+        value="${esc(idx?.webnovel_book_id ? `https://www.webnovel.com/book/${idx.webnovel_book_id}` : "")}"></label>
+    <label>Unser Kapitel 1 ist auf WebNovel Kapitel<small>Steht der Prolog auf WebNovel als eigenes Kapitel davor, ist es 2.</small>
+      <input name="first" type="number" min="1" max="999" value="${(parseInt(idx?.webnovel_offset, 10) || 0) + 1}"></label>
+    <div class="err" id="werr" role="alert"></div>
+    <div class="formrow"><button type="button" class="btn" id="wcancel">Abbrechen</button>
+      <button class="btn primary" id="wsave">${st ? "Speichern" : "Anlegen"}</button></div>
+  </form>`;
+  document.body.appendChild(dlg);
+  dlg.addEventListener("close", () => dlg.remove());
+  dlg.showModal();
+  const f = $("#workform", dlg);
+  let slugTouched = false;
+  if (!st) {
+    f.slug.addEventListener("input", () => { slugTouched = true; });
+    f.title.addEventListener("input", () => { if (!slugTouched) f.slug.value = slugify(f.title.value); });
+  }
+  $("#wcancel", dlg).addEventListener("click", () => dlg.close());
+  f.addEventListener("submit", async e => {
+    e.preventDefault();
+    const err = msg => { $("#werr", dlg).textContent = msg; };
+    const title = f.title.value.trim();
+    const link = f.link.value.trim();
+    const bookId = link ? bookIdFrom(link) : "";
+    const offset = Math.max(1, parseInt(f.first.value, 10) || 1) - 1;
+    if (!title) return err("Bitte einen Titel angeben.");
+    if (link && !bookId) return err("Den WebNovel-Link verstehe ich nicht. Er sieht so aus: webnovel.com/book/name_1234567890");
+    let slug = st?.id;
+    if (!st) {
+      slug = f.slug.value.trim();
+      if (!/^[a-z0-9][a-z0-9-]*$/.test(slug)) return err("Ordner: nur Kleinbuchstaben, Ziffern und Bindestriche.");
+      if (S.stories[slug]) return err("Diesen Ordner gibt es schon im Lektorat.");
+    }
+    $("#wsave", dlg).disabled = true;
+    S.busy = true;
+    try {
+      const path = `${slug}/index.json`;
+      let index;
+      if (st) {
+        index = await mutateJson(path, cur => {
+          const i = cur || st.index;
+          i.title = title; i.webnovel_book_id = bookId; i.webnovel_offset = offset;
+          return i;
+        }, `Lektorat-Seite: ${S.user.login} bearbeitet ${slug}`);
+        st.index = index;
+        if (st.wn && String(st.wn.book_id) !== bookId) st.wn = null;
+      } else {
+        index = { story: slug, title, author: S.user.login, webnovel_book_id: bookId, webnovel_offset: offset, chapters: {} };
+        const body = { message: `Lektorat-Seite: ${S.user.login} legt ${slug} an`, branch: CFG.branch,
+          content: encodeB64(JSON.stringify(index, null, 1) + "\n") };
+        const r = await gh(`${repoPath}/contents/${encPath(path)}`, { method: "PUT", body: JSON.stringify(body) });
+        S.files.set(path, r.content.sha);
+        S.stories[slug] = { id: slug, index, comments: {}, wn: null };
+      }
+      dlg.close();
+      toast(st ? "Gespeichert" : `„${title}“ angelegt`);
+      if (bookId && !(st && st.index.webnovel_book_id === bookId && st.wn)) {
+        setTimeout(() => toast("Der Abgleich mit WebNovel läuft beim nächsten stündlichen Lauf."), 2600);
+      }
+      store.set(TAB_KEY, slug);
+      if (location.hash === `#/${slug}`) renderOverview(slug); else location.hash = `#/${slug}`;
+    } catch (e2) {
+      err(e2.status === 422 ? "Diesen Ordner gibt es schon im Lektorat." : `Speichern fehlgeschlagen: ${e2.message}`);
+      $("#wsave", dlg).disabled = false;
+    } finally { S.busy = false; }
+  });
 }
 
 /* ---------------- markdown (blocks numbered like tools/lektorat.py paragraphs()) ---------------- */
@@ -648,6 +808,7 @@ async function renderReader(storyId, key, v, keep) {
           <span>${ver.words || "?"} Wörter · von ${esc(ver.by || st.index.author || "?")}</span>
           ${prev ? `<label class="check" style="margin:0"><input type="checkbox" id="chg" ${view.showChanges ? "checked" : ""}> Änderungen zu v${versions.filter(x => x.v < v).pop().v} markieren</label>` : ""}
         </div>
+        ${wnSentence(st, key, v)}
         ${ver.note ? `<div class="vnote">${esc(ver.note)}</div>` : ""}
         ${ch.note ? `<div class="vnote">${esc(ch.note)}</div>` : ""}
         <div class="ractions">${stateButtons(author, ch.state)}</div>
