@@ -1,0 +1,993 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<title>Lektorat</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%233552c9'/%3E%3Cpath d='M9 8h4v13h10v3H9z' fill='white'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,600;1,7..72,400&display=swap" rel="stylesheet">
+<!--
+  Lektorat-Seite für zwei Schreiber.
+
+  Diese Seite enthält keine Texte. Nach der Anmeldung mit einem GitHub-Token liest und schreibt sie
+  direkt im privaten Repo (Branch "lektorat"):
+    <story>/index.json          Titel, Autor, Kapitel mit Versionen und Stand
+    <story>/chNN/vK.md          Version K eines Kapitels
+    <story>/chNN/comments.json  Kommentare und Antworten
+  Claude liest und beantwortet die Kommentare mit tools/lektorat.py im selben Repo.
+  Quelltext: tools/lektorat_site/index.html auf main; veröffentlicht mit "tools/lektorat.py publish-site".
+-->
+<style>
+:root {
+  --bg: #f7f5f0; --surface: #fffefb; --surface-2: #f0ede6; --line: #e2ddd3; --line-strong: #cfc8bb;
+  --ink: #1f1c18; --ink-2: #5a544b; --ink-3: #8a8378;
+  --accent: #3552c9; --accent-ink: #ffffff; --accent-soft: #e6eafb;
+  --hl: rgba(255, 190, 40, .38); --hl-active: rgba(255, 140, 0, .55); --hl-done: rgba(120, 120, 120, .18);
+  --pick: rgba(53, 82, 201, .22); --changed: #e0a400;
+  --st-eingereicht: #2f6fd6; --st-in-arbeit: #b7791f; --st-kommentiert: #7a4fcf; --st-ueberarbeitet: #0f8a80; --st-erledigt: #2f8a3a;
+  --danger: #c0392b; --shadow: 0 1px 2px rgba(30, 25, 15, .06), 0 6px 24px rgba(30, 25, 15, .07);
+  --text-font: "Literata", Georgia, "Times New Roman", serif;
+  --ui-font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #161514; --surface: #1e1d1b; --surface-2: #272522; --line: #34312d; --line-strong: #46423c;
+    --ink: #ece8e1; --ink-2: #b4ada3; --ink-3: #857e74;
+    --accent: #7d95f2; --accent-ink: #10131f; --accent-soft: #252c47;
+    --hl: rgba(255, 190, 40, .26); --hl-active: rgba(255, 150, 20, .45); --hl-done: rgba(200, 200, 200, .12);
+    --pick: rgba(125, 149, 242, .28); --changed: #d9a520;
+    --st-eingereicht: #6d9cf0; --st-in-arbeit: #e0a64a; --st-kommentiert: #ab8cf0; --st-ueberarbeitet: #3fbfb3; --st-erledigt: #5cbf68;
+    --danger: #ef7a6d; --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 28px rgba(0, 0, 0, .35);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #161514; --surface: #1e1d1b; --surface-2: #272522; --line: #34312d; --line-strong: #46423c;
+  --ink: #ece8e1; --ink-2: #b4ada3; --ink-3: #857e74;
+  --accent: #7d95f2; --accent-ink: #10131f; --accent-soft: #252c47;
+  --hl: rgba(255, 190, 40, .26); --hl-active: rgba(255, 150, 20, .45); --hl-done: rgba(200, 200, 200, .12);
+  --pick: rgba(125, 149, 242, .28); --changed: #d9a520;
+  --st-eingereicht: #6d9cf0; --st-in-arbeit: #e0a64a; --st-kommentiert: #ab8cf0; --st-ueberarbeitet: #3fbfb3; --st-erledigt: #5cbf68;
+  --danger: #ef7a6d; --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 28px rgba(0, 0, 0, .35);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--ink); font: 15px/1.5 var(--ui-font); -webkit-font-smoothing: antialiased; }
+a { color: var(--accent); }
+button, input, textarea, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+[hidden] { display: none !important; }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 0 16px; }
+
+/* top bar */
+.bar { position: sticky; top: 0; z-index: 20; background: color-mix(in srgb, var(--bg) 88%, transparent);
+  backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); }
+.bar .wrap { display: flex; align-items: center; gap: 12px; height: 56px; }
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 650; letter-spacing: -.01em; text-decoration: none; color: var(--ink); }
+.brand i { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 8px; background: var(--accent); color: var(--accent-ink); font-style: normal; font-weight: 700; font-size: 14px; }
+.bar .spacer { flex: 1; }
+.me { display: flex; align-items: center; gap: 8px; color: var(--ink-2); font-size: 14px; }
+.me img { width: 26px; height: 26px; border-radius: 50%; }
+.btn { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line-strong); background: var(--surface);
+  border-radius: 9px; padding: 6px 12px; font-size: 14px; line-height: 20px; transition: background .12s, border-color .12s; }
+.btn:hover { background: var(--surface-2); }
+.btn:disabled { opacity: .55; cursor: default; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
+.btn.primary:hover { filter: brightness(1.06); }
+.btn.ghost { border-color: transparent; background: transparent; color: var(--ink-2); }
+.btn.ghost:hover { background: var(--surface-2); color: var(--ink); }
+.btn.small { padding: 3px 9px; font-size: 13px; border-radius: 7px; }
+.btn.danger { color: var(--danger); }
+.icon { width: 16px; height: 16px; flex: none; }
+
+/* login */
+.login { max-width: 560px; margin: 56px auto; padding: 0 16px; }
+.login h1 { font: 600 30px/1.2 var(--text-font); margin: 0 0 8px; letter-spacing: -.01em; }
+.login .lead { color: var(--ink-2); margin: 0 0 24px; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 20px; box-shadow: var(--shadow); }
+.login label { display: block; font-weight: 600; margin-bottom: 6px; }
+.login input { width: 100%; border: 1px solid var(--line-strong); background: var(--bg); border-radius: 9px; padding: 9px 11px; }
+.login input:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+.login .row { display: flex; gap: 10px; margin-top: 12px; align-items: center; }
+.login .err { color: var(--danger); font-size: 14px; }
+.login details { margin-top: 18px; color: var(--ink-2); }
+.login summary { cursor: pointer; color: var(--ink); font-weight: 600; }
+.login ol { padding-left: 20px; margin: 10px 0; }
+.login li { margin: 6px 0; }
+.login code { background: var(--surface-2); padding: 1px 5px; border-radius: 5px; font-size: 13px; }
+.note { font-size: 13px; color: var(--ink-3); margin-top: 14px; }
+
+/* overview */
+.page { padding: 28px 0 80px; }
+.page h1 { font: 600 28px/1.2 var(--text-font); margin: 0 0 4px; letter-spacing: -.01em; }
+.sub { color: var(--ink-2); margin: 0 0 24px; }
+.foryou { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; margin-bottom: 32px; }
+.foryou h2, .story h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-3); margin: 0 0 10px; font-weight: 650; }
+.foryou .panel { padding: 16px 18px; }
+.foryou ul { list-style: none; margin: 0; padding: 0; }
+.foryou li + li { border-top: 1px solid var(--line); }
+.foryou a.item { display: flex; gap: 10px; align-items: baseline; padding: 9px 0; text-decoration: none; color: var(--ink); }
+.foryou a.item:hover .t { color: var(--accent); }
+.foryou .t { flex: 1; min-width: 0; }
+.foryou .t small { display: block; color: var(--ink-3); }
+.empty { color: var(--ink-3); font-size: 14px; padding: 6px 0; }
+.story { margin-bottom: 36px; }
+.story-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; margin-bottom: 12px; }
+.story-head h3 { font: 600 22px/1.25 var(--text-font); margin: 0; }
+.story-head .meta { color: var(--ink-2); font-size: 14px; }
+.chapters { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; box-shadow: var(--shadow); }
+.chap { display: grid; grid-template-columns: 52px minmax(0, 1fr) auto auto auto; gap: 12px; align-items: center;
+  padding: 11px 16px; text-decoration: none; color: var(--ink); border-top: 1px solid var(--line); }
+.chap:first-child { border-top: 0; }
+.chap:hover { background: var(--surface-2); }
+.chap .n { color: var(--ink-3); font-variant-numeric: tabular-nums; font-size: 14px; }
+.chap .t { min-width: 0; }
+.chap .t b { font-weight: 600; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chap .t small { color: var(--ink-3); font-size: 13px; }
+.count { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; color: var(--ink-2); font-variant-numeric: tabular-nums; min-width: 38px; }
+.count.has { color: var(--ink); font-weight: 600; }
+.wn { font-size: 12px; color: var(--ink-3); min-width: 64px; text-align: right; }
+.wn.on { color: var(--st-erledigt); }
+.pill { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; padding: 2px 9px 2px 8px; border-radius: 999px;
+  color: var(--c, var(--ink-2)); background: color-mix(in srgb, var(--c, var(--ink-3)) 13%, transparent); white-space: nowrap; }
+.pill::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.pill[data-s="eingereicht"] { --c: var(--st-eingereicht); }
+.pill[data-s="in-arbeit"] { --c: var(--st-in-arbeit); }
+.pill[data-s="kommentiert"] { --c: var(--st-kommentiert); }
+.pill[data-s="ueberarbeitet"] { --c: var(--st-ueberarbeitet); }
+.pill[data-s="erledigt"] { --c: var(--st-erledigt); }
+
+/* reader */
+.reader { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 60px; padding: 24px 0 120px; }
+.back { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-2); text-decoration: none; font-size: 14px; }
+.back:hover { color: var(--accent); }
+.rhead h1 { font: 600 30px/1.2 var(--text-font); margin: 8px 0 10px; letter-spacing: -.01em; }
+.rmeta { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; color: var(--ink-2); font-size: 14px; }
+.rmeta select { border: 1px solid var(--line-strong); background: var(--surface); border-radius: 8px; padding: 4px 8px; font-size: 14px; }
+.ractions { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 0; }
+.vnote { margin: 12px 0 0; padding: 10px 12px; background: var(--surface-2); border-radius: 10px; font-size: 14px; color: var(--ink-2); }
+.hint { margin: 18px 0 0; font-size: 13px; color: var(--ink-3); }
+.text { max-width: 690px; margin-top: 26px; font: 18.5px/1.72 var(--text-font); position: relative; }
+.text .b { position: relative; margin: 0 0 1em; border-radius: 4px; }
+.text h2.b, .text h3.b { font: 600 22px/1.3 var(--text-font); margin: 1.4em 0 .8em; }
+.text blockquote.b { margin-left: 0; padding-left: 16px; border-left: 3px solid var(--line-strong); color: var(--ink-2); }
+.text hr.b { border: 0; text-align: center; margin: 1.6em 0; }
+.text hr.b::after { content: "* * *"; color: var(--ink-3); letter-spacing: .4em; }
+.text .b.changed::before { content: ""; position: absolute; left: -14px; top: .25em; bottom: .25em; width: 3px; border-radius: 2px; background: var(--changed); }
+.bubble { position: absolute; right: -42px; top: 2px; min-width: 28px; height: 24px; padding: 0 7px; border-radius: 12px; border: 1px solid var(--line-strong);
+  background: var(--surface); font: 600 12px/22px var(--ui-font); color: var(--ink-2); }
+.bubble:hover, .bubble.on { border-color: var(--accent); color: var(--accent); }
+::highlight(cmt) { background-color: var(--hl); }
+::highlight(cmt-done) { background-color: var(--hl-done); }
+::highlight(cmt-active) { background-color: var(--hl-active); }
+::highlight(pick) { background-color: var(--pick); }
+.fab { position: absolute; z-index: 15; transform: translate(-50%, 8px); box-shadow: var(--shadow); }
+
+/* side panel */
+.side { position: sticky; top: 72px; align-self: start; max-height: calc(100vh - 88px); display: flex; flex-direction: column; }
+.side-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.side-head h2 { font-size: 15px; margin: 0; flex: 1; }
+.tabs { display: inline-flex; background: var(--surface-2); border-radius: 9px; padding: 2px; }
+.tabs button { border: 0; background: transparent; padding: 4px 10px; border-radius: 7px; font-size: 13px; color: var(--ink-2); }
+.tabs button.on { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.08); font-weight: 600; }
+.side-close { display: none; }
+.cards { overflow-y: auto; padding: 2px 4px 20px 2px; display: flex; flex-direction: column; gap: 10px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 13px; font-size: 14px; transition: border-color .15s, box-shadow .15s; }
+.card.active { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.card.done { opacity: .72; }
+.card header { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; color: var(--ink-3); font-size: 12.5px; }
+.card header b { color: var(--ink); font-size: 13px; }
+.kind { font-size: 11.5px; font-weight: 650; padding: 1px 7px; border-radius: 6px; background: var(--surface-2); color: var(--ink-2); }
+.kind[data-k="Fehler"] { color: var(--danger); background: color-mix(in srgb, var(--danger) 12%, transparent); }
+.kind[data-k="Lob"] { color: var(--st-erledigt); background: color-mix(in srgb, var(--st-erledigt) 13%, transparent); }
+.kind[data-k="Logik"] { color: var(--st-kommentiert); background: color-mix(in srgb, var(--st-kommentiert) 13%, transparent); }
+.kind[data-k="Stil"] { color: var(--st-eingereicht); background: color-mix(in srgb, var(--st-eingereicht) 13%, transparent); }
+.card .q { margin: 8px 0 6px; padding: 2px 0 2px 10px; border-left: 3px solid var(--hl-active); color: var(--ink-2); font: italic 14px/1.5 var(--text-font);
+  cursor: pointer; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.card .q.lost { border-left-color: var(--line-strong); cursor: default; }
+.card p { margin: 6px 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.sugg { margin: 8px 0; padding: 8px 10px; background: var(--surface-2); border-radius: 8px; font: 14px/1.5 var(--text-font); }
+.sugg small { display: block; font: 600 11.5px var(--ui-font); color: var(--ink-3); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 3px; }
+.sugg del { color: var(--danger); background: color-mix(in srgb, var(--danger) 12%, transparent); text-decoration-thickness: 1px; border-radius: 3px; }
+.sugg ins { color: var(--st-erledigt); background: color-mix(in srgb, var(--st-erledigt) 14%, transparent); text-decoration: none; border-radius: 3px; }
+.replies { list-style: none; margin: 8px 0 0; padding: 0 0 0 10px; border-left: 2px solid var(--line); }
+.replies li { margin: 6px 0; }
+.replies li header { font-size: 12px; }
+.replies p { margin: 2px 0; }
+.card footer { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
+.card form { margin-top: 8px; }
+textarea { width: 100%; border: 1px solid var(--line-strong); background: var(--bg); border-radius: 9px; padding: 8px 10px; resize: vertical; min-height: 64px; font-size: 14px; line-height: 1.45; }
+.formrow { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
+.group-label { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-3); font-weight: 650; margin: 8px 2px 0; }
+
+/* composer */
+.composer { background: var(--surface); border: 1px solid var(--accent); border-radius: 12px; padding: 12px 13px; box-shadow: 0 0 0 3px var(--accent-soft); margin-bottom: 10px; }
+.composer .q { margin: 0 0 10px; padding-left: 10px; border-left: 3px solid var(--accent); color: var(--ink-2); font: italic 14px/1.5 var(--text-font);
+  max-height: 6.2em; overflow: auto; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.chips label { position: relative; }
+.chips input { position: absolute; opacity: 0; pointer-events: none; }
+.chips span { display: inline-block; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--line-strong); font-size: 13px; cursor: pointer; }
+.chips input:checked + span { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.chips input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
+.check { display: flex; align-items: center; gap: 6px; font-size: 13.5px; color: var(--ink-2); margin: 8px 0 6px; }
+
+.toast { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); z-index: 50; background: var(--ink); color: var(--bg);
+  padding: 9px 16px; border-radius: 10px; font-size: 14px; box-shadow: var(--shadow); max-width: calc(100vw - 32px); }
+.toast.err { background: var(--danger); color: #fff; }
+.loading { padding: 80px 0; text-align: center; color: var(--ink-3); }
+.mobile-fab { display: none; }
+
+@media (max-width: 980px) {
+  .reader { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .text { max-width: none; font-size: 17.5px; }
+  .bubble { display: none; }
+  .side { position: fixed; inset: auto 0 0 0; top: auto; max-height: 72vh; z-index: 30; background: var(--bg);
+    border-top: 1px solid var(--line-strong); border-radius: 16px 16px 0 0; padding: 14px 16px 0; box-shadow: 0 -10px 30px rgba(0,0,0,.18);
+    transform: translateY(105%); transition: transform .22s ease; }
+  .side.open { transform: none; }
+  .side-close { display: inline-flex; }
+  .mobile-fab { display: inline-flex; position: fixed; right: 16px; bottom: 16px; z-index: 25; box-shadow: var(--shadow); }
+  .chap { grid-template-columns: 40px minmax(0, 1fr) auto; }
+  .chap .wn, .chap .count:not(.has) { display: none; }
+}
+@media (max-width: 600px) {
+  .bar .wrap { gap: 6px; }
+  .me span, #reload span { display: none; }
+  .page h1, .rhead h1 { font-size: 24px; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<header class="bar">
+  <div class="wrap">
+    <a class="brand" href="#/"><i>L</i> Lektorat</a>
+    <span class="spacer"></span>
+    <span id="me" class="me" hidden></span>
+    <button id="reload" class="btn ghost small" title="Neu laden" hidden>
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg>
+      <span>Neu laden</span>
+    </button>
+    <button id="logout" class="btn ghost small" hidden>Abmelden</button>
+  </div>
+</header>
+<main id="app" class="wrap"><div class="loading">Lädt …</div></main>
+<div id="toast" class="toast" hidden role="status" aria-live="polite"></div>
+
+<script>
+"use strict";
+/* ---------------- configuration ---------------- */
+const CFG = { owner: "Txbiaz", repo: "fanfiction-story-skill", branch: "lektorat", statsBranch: "webnovel-stats" };
+const LOCAL = ["localhost", "127.0.0.1"].includes(location.hostname);
+// Only a local test copy may talk to another API; the public page always uses GitHub.
+const API = (LOCAL && new URLSearchParams(location.search).get("api")) || "https://api.github.com";
+const STATES = {
+  "eingereicht": "eingereicht", "in-arbeit": "wird gelesen", "kommentiert": "kommentiert",
+  "ueberarbeitet": "überarbeitet", "erledigt": "erledigt",
+};
+const KINDS = ["Anmerkung", "Fehler", "Stil", "Logik", "Lob"];
+const TOKEN_KEY = "lektorat.token";
+
+/* ---------------- small helpers ---------------- */
+const $ = (sel, el = document) => el.querySelector(sel);
+const $$ = (sel, el = document) => [...el.querySelectorAll(sel)];
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const same = (a, b) => String(a || "").toLowerCase() === String(b || "").toLowerCase();
+const num = key => parseInt(key.slice(2), 10);
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch { /* private window */ } },
+  del(k) { try { localStorage.removeItem(k); } catch { /* ignore */ } },
+};
+function decodeB64(s) {
+  const bin = atob(String(s).replace(/\s/g, ""));
+  return new TextDecoder().decode(Uint8Array.from(bin, c => c.charCodeAt(0)));
+}
+function encodeB64(s) {
+  const bytes = new TextEncoder().encode(s);
+  let bin = "";
+  for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  return btoa(bin);
+}
+function when(iso) {
+  const d = new Date(iso);
+  if (isNaN(d)) return "";
+  const today = new Date();
+  const hm = d.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+  if (d.toDateString() === today.toDateString()) return `heute ${hm}`;
+  return `${d.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" })} ${hm}`;
+}
+function uid() { return "c" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+let toastTimer;
+function toast(msg, err = false) {
+  const t = $("#toast");
+  t.textContent = msg; t.className = "toast" + (err ? " err" : ""); t.hidden = false;
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => (t.hidden = true), err ? 6000 : 2400);
+}
+
+/* ---------------- GitHub API ---------------- */
+let TOKEN = store.get(TOKEN_KEY);
+async function gh(path, opts = {}) {
+  const r = await fetch(API + path, {
+    cache: "no-store", ...opts,
+    headers: { Authorization: `Bearer ${TOKEN}`, Accept: "application/vnd.github+json", ...(opts.headers || {}) },
+  });
+  if (!r.ok) {
+    let msg = `${r.status}`;
+    try { msg += " " + ((await r.json()).message || ""); } catch { /* no body */ }
+    const e = new Error(msg); e.status = r.status; throw e;
+  }
+  return r.status === 204 ? null : r.json();
+}
+const repoPath = `/repos/${CFG.owner}/${CFG.repo}`;
+const encPath = p => p.split("/").map(encodeURIComponent).join("/");
+const blobCache = new Map();
+async function blob(sha) {
+  if (!blobCache.has(sha)) blobCache.set(sha, gh(`${repoPath}/git/blobs/${sha}`).then(b => decodeB64(b.content)));
+  return blobCache.get(sha);
+}
+async function readFile(path, ref = CFG.branch) {
+  const r = await gh(`${repoPath}/contents/${encPath(path)}?ref=${encodeURIComponent(ref)}`);
+  return { text: decodeB64(r.content), sha: r.sha };
+}
+/** Read a JSON file, change it with fn, write it back; start over if someone saved in between. */
+async function mutateJson(path, fn, message) {
+  for (let attempt = 0; attempt < 5; attempt++) {
+    let cur = null, sha;
+    try { const f = await readFile(path); cur = JSON.parse(f.text); sha = f.sha; }
+    catch (e) { if (e.status !== 404) throw e; }
+    const next = fn(cur);
+    const body = { message, content: encodeB64(JSON.stringify(next, null, 1) + "\n"), branch: CFG.branch };
+    if (sha) body.sha = sha;
+    try {
+      const r = await gh(`${repoPath}/contents/${encPath(path)}`, { method: "PUT", body: JSON.stringify(body) });
+      S.files.set(path, r.content.sha);
+      return next;
+    } catch (e) {
+      if (e.status === 409 || e.status === 422) { await sleep(300 + 400 * attempt); continue; }
+      throw e;
+    }
+  }
+  throw new Error("Jemand speichert gerade gleichzeitig. Bitte gleich noch einmal versuchen.");
+}
+
+/* ---------------- state ---------------- */
+const S = { user: null, files: new Map(), stories: {}, loadedAt: 0, busy: false };
+
+async function loadAll() {
+  const tree = await gh(`${repoPath}/git/trees/${encodeURIComponent(CFG.branch)}?recursive=1`);
+  S.files = new Map(tree.tree.filter(x => x.type === "blob").map(x => [x.path, x.sha]));
+  const ids = [...S.files.keys()].filter(p => /^[^/]+\/index\.json$/.test(p)).map(p => p.split("/")[0]);
+  const stories = {};
+  await Promise.all(ids.map(async id => {
+    const index = JSON.parse(await blob(S.files.get(`${id}/index.json`)));
+    const comments = {};
+    await Promise.all(Object.keys(index.chapters || {}).map(async key => {
+      const sha = S.files.get(`${id}/${key}/comments.json`);
+      comments[key] = sha ? (JSON.parse(await blob(sha)).comments || []) : [];
+    }));
+    let wn = null;
+    if (index.webnovel_book_id) {
+      try { wn = JSON.parse((await readFile(`chapters/${index.webnovel_book_id}.json`, CFG.statsBranch)).text); }
+      catch { wn = null; }
+    }
+    stories[id] = { id, index, comments, wn };
+  }));
+  S.stories = stories;
+  S.loadedAt = Date.now();
+}
+function chaptersOf(st) {
+  return Object.entries(st.index.chapters || {}).sort((a, b) => num(a[0]) - num(b[0]));
+}
+const lastVersion = ch => (ch.versions || [])[ch.versions.length - 1] || {};
+const openOf = list => (list || []).filter(c => (c.status || "offen") === "offen");
+function webnovelInfo(st, key) {
+  if (!st.wn) return null;
+  const idx = num(key) + (parseInt(st.index.webnovel_offset, 10) || 0);
+  return (st.wn.chapters || []).find(c => c.index === idx) || false;
+}
+const isAuthor = st => same(st.index.author, S.user?.login);
+
+/* ---------------- login ---------------- */
+function renderLogin(error = "") {
+  $("#me").hidden = $("#reload").hidden = $("#logout").hidden = true;
+  const fine = "https://github.com/settings/personal-access-tokens/new";
+  const classic = "https://github.com/settings/tokens/new?scopes=repo&description=Lektorat";
+  $("#app").innerHTML = `
+  <section class="login">
+    <h1>Lektorat</h1>
+    <p class="lead">Kapitel lesen, Stellen markieren, kommentieren. Die Texte liegen im privaten Repo auf GitHub;
+      diese Seite zeigt sie erst nach der Anmeldung.</p>
+    <form class="panel" id="loginform">
+      <label for="tok">GitHub-Token</label>
+      <input id="tok" type="password" autocomplete="off" spellcheck="false" placeholder="github_pat_… oder ghp_…" required>
+      <div class="row"><button class="btn primary" type="submit">Anmelden</button><span class="err">${esc(error)}</span></div>
+      <p class="note">Der Token bleibt nur in diesem Browser gespeichert und geht ausschließlich an GitHub.</p>
+    </form>
+    <details ${error ? "open" : ""}>
+      <summary>So bekommst du einen Token (einmalig, 2 Minuten)</summary>
+      <ol>
+        <li>Auf GitHub <a href="${fine}" target="_blank" rel="noopener">einen neuen Token anlegen</a>
+          („Fine-grained token“). Name: <code>Lektorat</code>, Ablauf so lang wie möglich.</li>
+        <li><b>Resource owner:</b> <code>${esc(CFG.owner)}</code>. <b>Repository access:</b> „Only select repositories“
+          → <code>${esc(CFG.repo)}</code>.</li>
+        <li><b>Permissions → Repository permissions → Contents:</b> „Read and write“. Sonst nichts.</li>
+        <li>„Generate token“, kopieren, oben einfügen.</li>
+      </ol>
+      <p>Taucht das Repo bei dir nicht auf, weil es nicht dir gehört: stattdessen einen
+        <a href="${classic}" target="_blank" rel="noopener">klassischen Token</a> mit Haken bei <code>repo</code> anlegen.
+        Der gilt für alle deine Repos, also nur in deinem eigenen Browser verwenden.</p>
+    </details>
+  </section>`;
+  $("#loginform").addEventListener("submit", async ev => {
+    ev.preventDefault();
+    TOKEN = $("#tok").value.trim();
+    if (!TOKEN) return;
+    await start(true);
+  });
+}
+async function start(fromLogin = false) {
+  if (!TOKEN) return renderLogin();
+  $("#app").innerHTML = `<div class="loading">Lädt …</div>`;
+  try {
+    S.user = await gh("/user");
+    const repo = await gh(repoPath);
+    if (repo.permissions && repo.permissions.push === false) throw Object.assign(new Error("nur Lesezugriff"), { status: 403 });
+    await loadAll();
+  } catch (e) {
+    TOKEN = null; store.del(TOKEN_KEY);
+    const msg = e.status === 401 ? "Der Token stimmt nicht oder ist abgelaufen."
+      : (e.status === 404 || e.status === 403) ? `Mit diesem Token gibt es keinen Schreibzugriff auf ${CFG.owner}/${CFG.repo}.`
+      : `Verbindung fehlgeschlagen (${e.message}).`;
+    return renderLogin(msg);
+  }
+  if (fromLogin) store.set(TOKEN_KEY, TOKEN);
+  const me = $("#me");
+  me.innerHTML = `${S.user.avatar_url ? `<img src="${esc(S.user.avatar_url)}" alt="">` : ""}<span>${esc(S.user.login)}</span>`;
+  me.hidden = $("#reload").hidden = $("#logout").hidden = false;
+  route();
+}
+$("#logout").addEventListener("click", () => {
+  TOKEN = null; store.del(TOKEN_KEY); S.user = null; location.hash = "#/"; renderLogin();
+});
+$("#reload").addEventListener("click", () => refresh(true));
+async function refresh(loud = false) {
+  if (!TOKEN || !S.user || S.busy) return;
+  try { await loadAll(); route(true); if (loud) toast("Neu geladen"); }
+  catch (e) { toast(`Laden fehlgeschlagen: ${e.message}`, true); }
+}
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible" && Date.now() - S.loadedAt > 60000) refresh();
+});
+
+/* ---------------- routing ---------------- */
+let view = null;
+function route(keep = false) {
+  if (!S.user) return;
+  const parts = location.hash.replace(/^#\/?/, "").split("/").filter(Boolean).map(decodeURIComponent);
+  const [story, key, ver] = parts;
+  if (story && key && S.stories[story]?.index.chapters?.[key]) {
+    const v = ver ? parseInt(ver.replace(/^v/, ""), 10) : null;
+    renderReader(story, key, v, keep);
+  } else {
+    renderOverview(story);
+  }
+}
+window.addEventListener("hashchange", () => route());
+
+/* ---------------- overview ---------------- */
+function renderOverview(focus) {
+  view = { type: "overview" };
+  const me = S.user.login;
+  const toRead = [], forMe = [];
+  for (const st of Object.values(S.stories)) {
+    for (const [key, ch] of chaptersOf(st)) {
+      const lv = lastVersion(ch);
+      if (!isAuthor(st) && ["eingereicht", "ueberarbeitet", "in-arbeit"].includes(ch.state)) toRead.push({ st, key, ch, lv });
+      if (isAuthor(st)) {
+        const fresh = openOf(st.comments[key]).filter(c => !same(c.by, me));
+        if (fresh.length) forMe.push({ st, key, ch, lv, n: fresh.length, last: fresh.map(c => c.at).sort().pop() });
+      }
+    }
+  }
+  forMe.sort((a, b) => (b.last || "").localeCompare(a.last || ""));
+  const item = (x, right, small) => `<li><a class="item" href="#/${encodeURIComponent(x.st.id)}/${x.key}">
+      <span class="t">${esc(x.lv.title || x.key)}<small>${esc(small)}</small></span>${right}</a></li>`;
+  const stories = Object.values(S.stories).sort((a, b) => (a.index.title || a.id).localeCompare(b.index.title || b.id));
+  $("#app").innerHTML = `
+  <div class="page">
+    <h1>Hallo ${esc(me)}</h1>
+    <p class="sub">${stories.length ? `${stories.length} ${stories.length === 1 ? "Geschichte" : "Geschichten"} im Lektorat.` : ""}
+      Neue Kapitel lädt Claude hoch („Lade Kapitel 7 ins Lektorat“).</p>
+    <div class="foryou">
+      <div class="panel"><h2>Für dich zu lesen${toRead.length ? ` · ${toRead.length}` : ""}</h2>${toRead.length ? `<ul>${toRead.slice(0, 5).map(x => item(x, pill(x.ch.state),
+        `${x.st.index.title || x.st.id} · ${x.key} · v${x.lv.v} · ${x.lv.words || "?"} Wörter`)).join("")}</ul>
+        ${toRead.length > 5 ? `<div class="empty">und ${toRead.length - 5} weitere, siehe unten</div>` : ""}`
+        : `<div class="empty">Gerade nichts offen.</div>`}</div>
+      <div class="panel"><h2>Neue Kommentare zu deinen Kapiteln</h2>${forMe.length ? `<ul>${forMe.map(x => item(x,
+        `<span class="count has">${commentIcon()}${x.n}</span>`, `${x.st.index.title || x.st.id} · ${x.key} · zuletzt ${when(x.last)}`)).join("")}</ul>`
+        : `<div class="empty">Keine offenen Kommentare.</div>`}</div>
+    </div>
+    ${stories.map(storyBlock).join("") || `<div class="empty">Noch keine Geschichte hochgeladen.</div>`}
+  </div>`;
+  if (focus) document.getElementById(`s-${focus}`)?.scrollIntoView();
+  else window.scrollTo(0, 0);
+}
+function commentIcon() {
+  return `<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg>`;
+}
+function pill(state) { return `<span class="pill" data-s="${esc(state)}">${esc(STATES[state] || state || "–")}</span>`; }
+function storyBlock(st) {
+  const rows = chaptersOf(st).map(([key, ch]) => {
+    const lv = lastVersion(ch);
+    const open = openOf(st.comments[key]).length;
+    const w = webnovelInfo(st, key);
+    const wn = w ? `<span class="wn on">online</span>` : (w === false ? `<span class="wn">nicht online</span>` : `<span class="wn"></span>`);
+    return `<a class="chap" href="#/${encodeURIComponent(st.id)}/${key}">
+      <span class="n">${key === "ch00" ? "Prolog" : num(key)}</span>
+      <span class="t"><b>${esc(lv.title || key)}</b><small>v${lv.v || "?"} · ${esc((lv.date || "").slice(0, 10).split("-").reverse().join("."))} · ${lv.words || "?"} Wörter</small></span>
+      <span class="count ${open ? "has" : ""}" title="offene Kommentare">${commentIcon()}${open}</span>
+      ${pill(ch.state)}${wn}</a>`;
+  }).join("");
+  const total = chaptersOf(st).reduce((n, [k]) => n + openOf(st.comments[k]).length, 0);
+  return `<section class="story" id="s-${esc(st.id)}">
+    <div class="story-head"><h3>${esc(st.index.title || st.id)}</h3>
+      <span class="meta">von ${esc(st.index.author || "?")} · ${chaptersOf(st).length} Kapitel · ${total} offene Kommentare</span></div>
+    <div class="chapters">${rows || `<div class="chap"><span></span><span class="t">Noch keine Kapitel.</span></div>`}</div>
+  </section>`;
+}
+
+/* ---------------- markdown (blocks numbered like tools/lektorat.py paragraphs()) ---------------- */
+function blocks(md) {
+  return md.replace(/\r\n/g, "\n").split(/\n\s*\n/).map(b => b.trim()).filter(Boolean);
+}
+function inline(s) {
+  return esc(s)
+    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+    .replace(/(^|[^*\w])\*(?!\s)(.+?)\*(?!\w)/g, "$1<em>$2</em>")
+    .replace(/(^|[^_\w])_(?!\s)(.+?)_(?!\w)/g, "$1<em>$2</em>")
+    .replace(/\n/g, "<br>");
+}
+function renderBlock(b, i, changed) {
+  const cls = `b${changed ? " changed" : ""}`;
+  if (/^(-{3,}|\*{3,}|_{3,})$/.test(b)) return `<hr class="${cls}" data-p="${i}">`;
+  const h = b.match(/^(#{1,6})\s+(.*)$/s);
+  if (h) return `<h2 class="${cls}" data-p="${i}">${inline(h[2])}</h2>`;
+  if (b.startsWith(">")) return `<blockquote class="${cls}" data-p="${i}">${inline(b.replace(/^>\s?/gm, ""))}</blockquote>`;
+  return `<p class="${cls}" data-p="${i}">${inline(b)}</p>`;
+}
+
+/* ---------------- text positions ---------------- */
+function offsetIn(el, node, off) {
+  const r = document.createRange(); r.selectNodeContents(el); r.setEnd(node, off);
+  return r.toString().length;
+}
+function rangeAt(el, start, end) {
+  const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+  const r = document.createRange();
+  let pos = 0, n, setStart = false;
+  while ((n = walker.nextNode())) {
+    const len = n.length;
+    if (!setStart && start <= pos + len) { r.setStart(n, start - pos); setStart = true; }
+    if (setStart && end <= pos + len) { r.setEnd(n, end - pos); return r; }
+    pos += len;
+  }
+  return setStart ? (r.setEnd(el, el.childNodes.length), r) : null;
+}
+function sentenceAt(text, pos) {
+  const re = /[^.!?…]*(?:[.!?…]+["”’»«)\]*]*|$)\s*/g;
+  let m;
+  while ((m = re.exec(text)) && m[0].length) {
+    const s = m.index, e = s + m[0].length;
+    if (pos < e || e >= text.length) {
+      const lead = m[0].length - m[0].trimStart().length;
+      return [s + lead, s + m[0].trimEnd().length];
+    }
+  }
+  return [0, text.length];
+}
+function caretAt(x, y) {
+  if (document.caretPositionFromPoint) { const p = document.caretPositionFromPoint(x, y); return p && { node: p.offsetNode, off: p.offset }; }
+  if (document.caretRangeFromPoint) { const r = document.caretRangeFromPoint(x, y); return r && { node: r.startContainer, off: r.startOffset }; }
+  return null;
+}
+const HL = typeof CSS !== "undefined" && CSS.highlights && typeof Highlight !== "undefined";
+function setHighlight(name, ranges) {
+  if (!HL) return;
+  ranges = ranges.filter(Boolean);
+  if (ranges.length) CSS.highlights.set(name, new Highlight(...ranges)); else CSS.highlights.delete(name);
+}
+
+/* ---------------- reader ---------------- */
+async function renderReader(storyId, key, v, keep) {
+  const st = S.stories[storyId];
+  const ch = st.index.chapters[key];
+  const versions = ch.versions || [];
+  const current = lastVersion(ch).v;
+  if (!v || !versions.some(x => x.v === v)) v = current;
+  const ver = versions.find(x => x.v === v);
+  const prevState = keep && view?.type === "reader" && view.story === storyId && view.key === key ? view : null;
+  view = { type: "reader", story: storyId, key, v, tab: prevState?.tab || "offen", active: prevState?.active || null,
+    pick: null, showChanges: prevState?.showChanges ?? true };
+  if (!prevState) $("#app").innerHTML = `<div class="loading">Kapitel lädt …</div>`;
+  let text, prev = null;
+  try {
+    const sha = S.files.get(`${storyId}/${key}/v${v}.md`);
+    if (!sha) throw new Error(`v${v}.md fehlt im Repo`);
+    text = await blob(sha);
+    const pv = versions.filter(x => x.v < v).pop();
+    if (pv && S.files.get(`${storyId}/${key}/v${pv.v}.md`)) prev = await blob(S.files.get(`${storyId}/${key}/v${pv.v}.md`));
+  } catch (e) {
+    $("#app").innerHTML = `<div class="loading">Kapitel konnte nicht geladen werden: ${esc(e.message)}</div>`;
+    return;
+  }
+  if (view.story !== storyId || view.key !== key || view.v !== v) return; // navigated away meanwhile
+  const bl = blocks(text);
+  const prevSet = prev ? new Set(blocks(prev)) : null;
+  view.blocks = bl;
+  const author = isAuthor(st);
+  const scroll = prevState ? window.scrollY : 0;
+  $("#app").innerHTML = `
+  <div class="reader">
+    <article>
+      <div class="rhead">
+        <a class="back" href="#/${encodeURIComponent(storyId)}">← ${esc(st.index.title || storyId)}</a>
+        <h1>${esc(ver.title || key)}</h1>
+        <div class="rmeta">
+          ${pill(ch.state)}
+          <select id="ver" aria-label="Version">${versions.slice().reverse().map(x =>
+            `<option value="${x.v}" ${x.v === v ? "selected" : ""}>Version ${x.v}${x.v === current ? " (neu)" : ""} · ${esc((x.date || "").slice(0, 10).split("-").reverse().join("."))}</option>`).join("")}</select>
+          <span>${ver.words || "?"} Wörter · von ${esc(ver.by || st.index.author || "?")}</span>
+          ${prev ? `<label class="check" style="margin:0"><input type="checkbox" id="chg" ${view.showChanges ? "checked" : ""}> Änderungen zu v${versions.filter(x => x.v < v).pop().v} markieren</label>` : ""}
+        </div>
+        ${ver.note ? `<div class="vnote">${esc(ver.note)}</div>` : ""}
+        ${ch.note ? `<div class="vnote">${esc(ch.note)}</div>` : ""}
+        <div class="ractions">${stateButtons(author, ch.state)}</div>
+        <p class="hint">Satz anklicken oder Text markieren, dann „Kommentieren“.</p>
+      </div>
+      <div class="text" id="text">${bl.map((b, i) => renderBlock(b, i, prevSet && view.showChanges && !prevSet.has(b))).join("")}</div>
+    </article>
+    <aside class="side" id="side">
+      <div class="side-head"><h2>Kommentare</h2>
+        <div class="tabs" role="tablist"><button data-tab="offen">Offen</button><button data-tab="alle">Alle</button></div>
+        <button class="btn ghost small side-close" id="sideclose" aria-label="Schließen">✕</button></div>
+      <div class="cards" id="cards"></div>
+    </aside>
+  </div>
+  <button class="btn primary mobile-fab" id="mfab">${commentIcon()}<span id="mfabn"></span></button>
+  <button class="btn primary fab" id="fab" hidden>Kommentieren</button>`;
+  window.scrollTo(0, scroll);
+  wireReader(st, key, v, author);
+  drawComments();
+}
+function stateButtons(author, state) {
+  const b = (s, label, primary) => state === s ? "" : `<button class="btn small ${primary ? "primary" : ""}" data-state="${s}">${label}</button>`;
+  if (author) return b("erledigt", "Kapitel ist fertig", true) + (state === "erledigt" ? b("ueberarbeitet", "Wieder öffnen") : "");
+  return (["eingereicht", "ueberarbeitet"].includes(state) ? b("in-arbeit", "Ich lese gerade") : "")
+    + b("kommentiert", "Fertig gelesen", true);
+}
+function wireReader(st, key, v, author) {
+  $("#ver").addEventListener("change", e => { location.hash = `#/${encodeURIComponent(st.id)}/${key}/v${e.target.value}`; });
+  $("#chg")?.addEventListener("change", e => { view.showChanges = e.target.checked; renderReader(st.id, key, v, true); });
+  $$(".ractions [data-state]").forEach(btn => btn.addEventListener("click", () => setState(st, key, btn.dataset.state)));
+  $$(".tabs button").forEach(b => b.addEventListener("click", () => { view.tab = b.dataset.tab; drawComments(); }));
+  $("#mfab").addEventListener("click", () => $("#side").classList.add("open"));
+  $("#sideclose").addEventListener("click", () => $("#side").classList.remove("open"));
+  const textEl = $("#text");
+  let down = null;
+  textEl.addEventListener("pointerdown", e => { down = { x: e.clientX, y: e.clientY }; });
+  textEl.addEventListener("click", e => {
+    const bub = e.target.closest(".bubble");
+    if (bub) { const c = visibleComments().find(c => c.anchor?.p === +bub.dataset.bp); if (c) focusComment(c.id, false); return; }
+    const sel = getSelection();
+    if (sel && !sel.isCollapsed && sel.toString().trim()) { pickFromSelection(sel); return; }
+    if (down && Math.hypot(e.clientX - down.x, e.clientY - down.y) > 6) return;
+    const blockEl = e.target.closest("[data-p]");
+    if (!blockEl || blockEl.tagName === "HR") return;
+    const caret = caretAt(e.clientX, e.clientY);
+    if (!caret || !blockEl.contains(caret.node)) return;
+    const pos = offsetIn(blockEl, caret.node, caret.off);
+    const p = +blockEl.dataset.p;
+    const hit = visibleComments().find(c => c.anchor && c.anchor.p === p && pos >= c.anchor.s && pos <= c.anchor.e);
+    if (hit) { focusComment(hit.id, false); return; }
+    const plain = blockEl.textContent;
+    const [s, en] = sentenceAt(plain, pos);
+    if (en <= s) return;
+    setPick(blockEl, p, s, en);
+  });
+  textEl.addEventListener("pointerup", () => setTimeout(() => {
+    const sel = getSelection();
+    if (sel && !sel.isCollapsed && sel.toString().trim()) pickFromSelection(sel);
+  }, 0));
+  $("#fab").addEventListener("mousedown", e => e.preventDefault());
+  $("#fab").addEventListener("click", () => openComposer());
+}
+function pickFromSelection(sel) {
+  const range = sel.getRangeAt(0);
+  const startEl = (range.startContainer.nodeType === 1 ? range.startContainer : range.startContainer.parentElement)?.closest("[data-p]");
+  if (!startEl || !$("#text").contains(startEl) || startEl.tagName === "HR") return;
+  const p = +startEl.dataset.p;
+  const s = offsetIn(startEl, range.startContainer, range.startOffset);
+  let e = startEl.contains(range.endContainer) ? offsetIn(startEl, range.endContainer, range.endOffset) : startEl.textContent.length;
+  const plain = startEl.textContent;
+  let a = s; while (a < e && /\s/.test(plain[a])) a++;
+  while (e > a && /\s/.test(plain[e - 1])) e--;
+  if (e <= a) return;
+  setPick(startEl, p, a, e);
+}
+function setPick(el, p, s, e) {
+  const r = rangeAt(el, s, e);
+  view.pick = { p, s, e, quote: el.textContent.slice(s, e) };
+  if (HL) { setHighlight("pick", [r]); getSelection().removeAllRanges(); }
+  if (view.composing) {  // composer open: move it to the new spot, keep what was typed
+    Object.assign(view.composing, view.pick);
+    const q = $("#composer .q"); if (q) q.textContent = `»${view.pick.quote}«`;
+    if ($("#csugg") && !$("#csugg-on").checked) $("#csugg").value = view.pick.quote;
+    return;
+  }
+  const rect = r.getBoundingClientRect();
+  const fab = $("#fab");
+  fab.hidden = false;
+  fab.style.left = `${Math.min(Math.max(rect.left + rect.width / 2, 80), document.documentElement.clientWidth - 80) + window.scrollX}px`;
+  fab.style.top = `${rect.bottom + window.scrollY}px`;
+}
+function clearPick() {
+  view.pick = null; setHighlight("pick", []); const fab = $("#fab"); if (fab) fab.hidden = true;
+}
+document.addEventListener("pointerdown", e => {
+  if (view?.type !== "reader" || !view.pick) return;
+  if (e.target.closest("#fab, .composer, #text")) return;
+  clearPick();
+});
+document.addEventListener("keydown", e => { if (e.key === "Escape" && view?.type === "reader") { clearPick(); $("#side")?.classList.remove("open"); } });
+
+/* ---------------- comments in the reader ---------------- */
+function anchorFor(c) {
+  const bl = view.blocks;
+  const tryBlock = i => {
+    const el = $(`#text [data-p="${i}"]`);
+    if (!el || !c.quote) return null;
+    const idx = el.textContent.indexOf(c.quote);
+    return idx < 0 ? null : { p: i, s: idx, e: idx + c.quote.length };
+  };
+  if (c.v === view.v && Number.isInteger(c.para)) {
+    const a = tryBlock(c.para);
+    if (a) return a;
+    if (!c.quote && c.para < bl.length) return { p: c.para, s: 0, e: 0 };
+  }
+  for (let i = 0; i < bl.length; i++) { const a = tryBlock(i); if (a) return a; }
+  return null;
+}
+function visibleComments() {
+  const st = S.stories[view.story];
+  const all = (st.comments[view.key] || []).map(c => ({ ...c, status: c.status || "offen" }));
+  const list = all.filter(c => (c.v || 0) <= view.v && (view.tab === "alle" || c.status === "offen"));
+  for (const c of list) c.anchor = anchorFor(c);
+  return list.sort((a, b) => (a.anchor ? a.anchor.p : 1e9) - (b.anchor ? b.anchor.p : 1e9)
+    || (a.anchor?.s || 0) - (b.anchor?.s || 0) || (a.at || "").localeCompare(b.at || ""));
+}
+function drawComments() {
+  const st = S.stories[view.story];
+  const list = visibleComments();
+  const author = isAuthor(st);
+  $$(".tabs button").forEach(b => b.classList.toggle("on", b.dataset.tab === view.tab));
+  const openN = openOf(st.comments[view.key]).length;
+  $("#mfabn").textContent = `${openN} offen`;
+  // highlights + bubbles
+  const textEl = $("#text");
+  $$(".bubble", textEl).forEach(b => b.remove());
+  const byBlock = {};
+  for (const c of list) if (c.anchor) (byBlock[c.anchor.p] ||= []).push(c);
+  for (const [p, cs] of Object.entries(byBlock)) {
+    const el = $(`#text [data-p="${p}"]`);
+    textEl.insertAdjacentHTML("beforeend", `<button class="bubble" data-bp="${p}" style="top:${el.offsetTop + 2}px" title="Kommentare zu diesem Absatz">${cs.length}</button>`);
+  }
+  const rangeOf = c => {
+    if (!c.anchor || c.anchor.e <= c.anchor.s) return null;
+    return rangeAt($(`#text [data-p="${c.anchor.p}"]`), c.anchor.s, c.anchor.e);
+  };
+  setHighlight("cmt", list.filter(c => c.status === "offen" && c.id !== view.active).map(rangeOf));
+  setHighlight("cmt-done", list.filter(c => c.status !== "offen" && c.id !== view.active).map(rangeOf));
+  setHighlight("cmt-active", list.filter(c => c.id === view.active).map(rangeOf));
+  // cards
+  const here = list.filter(c => c.anchor), lost = list.filter(c => !c.anchor);
+  if (view.composing && $("#composer")) {  // keep what was typed across redraws
+    Object.assign(view.composing, { text: $("#ctext").value, sugg: $("#csugg").value, suggOn: $("#csugg-on").checked,
+      kind: $("#composer").kind.value });
+  }
+  const composer = view.composing ? composerHtml() : "";
+  $("#cards").innerHTML = composer + (list.length || view.composing ? "" : `<div class="empty">${view.tab === "offen" ? "Keine offenen Kommentare." : "Noch keine Kommentare."}</div>`)
+    + here.map(c => cardHtml(c, author)).join("")
+    + (lost.length ? `<div class="group-label">Stelle nicht mehr im Text</div>` + lost.map(c => cardHtml(c, author)).join("") : "");
+  wireCards();
+  if (view.composing) wireComposer();
+}
+function cardHtml(c, author) {
+  const me = S.user.login;
+  const own = same(c.by, me);
+  const status = c.status === "offen" ? "" : `<span>· ${c.status}${c.done_by ? ` von ${esc(c.done_by)}` : ""}</span>`;
+  const older = c.v && c.v !== view.v ? `<span>· zu v${c.v}</span>` : "";
+  return `<article class="card ${c.status !== "offen" ? "done" : ""} ${view.active === c.id ? "active" : ""}" data-id="${esc(c.id)}">
+    <header>${c.kind ? `<span class="kind" data-k="${esc(c.kind)}">${esc(c.kind)}</span>` : ""}<b>${esc(c.by)}</b><span>${esc(when(c.at))}</span>${older}${status}</header>
+    ${c.quote ? `<div class="q ${c.anchor ? "" : "lost"}" data-jump="1">»${esc(c.quote)}«</div>` : ""}
+    ${c.text ? `<p>${esc(c.text)}</p>` : ""}
+    ${c.suggestion != null && c.suggestion !== "" ? `<div class="sugg"><small>Vorschlag</small>${wordDiff(c.quote || "", c.suggestion)}</div>` : ""}
+    ${(c.replies || []).length ? `<ul class="replies">${c.replies.map(r => `<li><header><b>${esc(r.by)}</b> <span>${esc(when(r.at))}</span></header><p>${esc(r.text)}</p></li>`).join("")}</ul>` : ""}
+    <footer>
+      <button class="btn ghost small" data-act="reply">Antworten</button>
+      ${c.status === "offen" ? `<button class="btn ghost small" data-act="done">${author ? "Erledigt" : "Als erledigt markieren"}</button>`
+        + (author ? `<button class="btn ghost small" data-act="reject">Abgelehnt</button>` : "")
+        : `<button class="btn ghost small" data-act="reopen">Wieder öffnen</button>`}
+      ${own && !(c.replies || []).length ? `<button class="btn ghost small danger" data-act="delete">Löschen</button>` : ""}
+    </footer>
+    <form hidden><textarea placeholder="Antwort …" required></textarea>
+      <div class="formrow"><button type="button" class="btn small" data-act="cancel">Abbrechen</button><button class="btn small primary">Antworten</button></div></form>
+  </article>`;
+}
+/** Word-level diff of a quote and its suggested replacement. */
+function wordDiff(a, b) {
+  const A = a.split(/(\s+)/), B = b.split(/(\s+)/), n = A.length, m = B.length;
+  if (!a || n * m > 250000) return `${a ? `<del>${esc(a)}</del><br>` : ""}<ins>${esc(b)}</ins>`;
+  const L = Array.from({ length: n + 1 }, () => new Uint16Array(m + 1));
+  for (let i = n - 1; i >= 0; i--) for (let j = m - 1; j >= 0; j--)
+    L[i][j] = A[i] === B[j] ? L[i + 1][j + 1] + 1 : Math.max(L[i + 1][j], L[i][j + 1]);
+  let i = 0, j = 0, out = "";
+  while (i < n && j < m) {
+    if (A[i] === B[j]) { out += esc(A[i]); i++; j++; }
+    else if (L[i + 1][j] >= L[i][j + 1]) out += `<del>${esc(A[i++])}</del>`;
+    else out += `<ins>${esc(B[j++])}</ins>`;
+  }
+  while (i < n) out += `<del>${esc(A[i++])}</del>`;
+  while (j < m) out += `<ins>${esc(B[j++])}</ins>`;
+  return out;
+}
+function focusComment(id, scrollText = true) {
+  view.active = id;
+  drawComments();
+  $("#side").classList.add("open");
+  const card = $(`.card[data-id="${CSS.escape(id)}"]`);
+  card?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  if (scrollText) {
+    const c = visibleComments().find(x => x.id === id);
+    if (c?.anchor) $(`#text [data-p="${c.anchor.p}"]`)?.scrollIntoView({ block: "center", behavior: "smooth" });
+  }
+}
+function wireCards() {
+  $$("#cards .card").forEach(card => {
+    const id = card.dataset.id;
+    card.querySelector("[data-jump]")?.addEventListener("click", () => { $("#side").classList.remove("open"); focusComment(id, true); });
+    card.addEventListener("click", e => {
+      const act = e.target.closest("[data-act]")?.dataset.act;
+      const form = card.querySelector("form");
+      if (act === "reply") { form.hidden = false; form.querySelector("textarea").focus(); }
+      else if (act === "cancel") form.hidden = true;
+      else if (act === "done") updateComment(id, c => setStatus(c, "erledigt"), "erledigt");
+      else if (act === "reject") updateComment(id, c => setStatus(c, "abgelehnt"), "abgelehnt");
+      else if (act === "reopen") updateComment(id, c => setStatus(c, "offen"), "wieder geöffnet");
+      else if (act === "delete") { if (confirm("Diesen Kommentar löschen?")) updateComment(id, null, "gelöscht"); }
+      else if (!act && !e.target.closest("form, a, button") && view.active !== id) focusComment(id, false);
+    });
+    card.querySelector("form").addEventListener("submit", e => {
+      e.preventDefault();
+      const text = e.target.querySelector("textarea").value.trim();
+      if (!text) return;
+      updateComment(id, c => { (c.replies ||= []).push({ by: S.user.login, at: new Date().toISOString().replace(/\.\d+Z$/, "Z"), text }); }, "Antwort gespeichert");
+    });
+  });
+}
+function setStatus(c, s) {
+  c.status = s;
+  if (s === "offen") { delete c.done_by; delete c.done_at; }
+  else { c.done_by = S.user.login; c.done_at = new Date().toISOString().replace(/\.\d+Z$/, "Z"); }
+}
+
+/* ---------------- composer ---------------- */
+function openComposer() {
+  if (!view.pick) return;
+  view.composing = { ...view.pick, kind: "Anmerkung" };
+  $("#fab").hidden = true;
+  $("#side").classList.add("open");
+  view.tab = "offen";
+  drawComments();
+  $("#cards").scrollTop = 0;
+  $(".composer textarea")?.focus();
+}
+function composerHtml() {
+  const c = view.composing;
+  return `<form class="composer" id="composer">
+    <div class="q">»${esc(c.quote)}«</div>
+    <div class="chips" role="radiogroup" aria-label="Art">${KINDS.map(k =>
+      `<label><input type="radio" name="kind" value="${k}" ${k === c.kind ? "checked" : ""}><span>${k}</span></label>`).join("")}</div>
+    <textarea id="ctext" placeholder="Was fällt dir auf?">${esc(c.text || "")}</textarea>
+    <label class="check"><input type="checkbox" id="csugg-on" ${c.suggOn ? "checked" : ""}> Änderung vorschlagen</label>
+    <textarea id="csugg" ${c.suggOn ? "" : "hidden"}>${esc(c.sugg ?? c.quote)}</textarea>
+    <div class="formrow"><button type="button" class="btn small" id="ccancel">Abbrechen</button>
+      <button class="btn small primary" id="csave">Kommentar speichern</button></div>
+  </form>`;
+}
+function wireComposer() {
+  const f = $("#composer");
+  $("#csugg-on").addEventListener("change", e => { $("#csugg").hidden = !e.target.checked; if (e.target.checked) $("#csugg").focus(); });
+  $("#ccancel").addEventListener("click", () => { view.composing = null; clearPick(); drawComments(); });
+  f.addEventListener("keydown", e => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) f.requestSubmit(); });
+  f.addEventListener("submit", async e => {
+    e.preventDefault();
+    const text = $("#ctext").value.trim();
+    const sugg = $("#csugg-on").checked ? $("#csugg").value.trim() : "";
+    if (!text && !sugg) { $("#ctext").focus(); return toast("Bitte einen Kommentar oder einen Vorschlag schreiben.", true); }
+    const c = view.composing;
+    const comment = {
+      id: uid(), v: view.v, para: c.p, quote: c.quote, kind: f.kind.value, text,
+      suggestion: sugg && sugg !== c.quote ? sugg : null,
+      by: S.user.login, at: new Date().toISOString().replace(/\.\d+Z$/, "Z"), status: "offen", replies: [],
+    };
+    $("#csave").disabled = true;
+    const ok = await saveComments(list => { list.push(comment); }, "Kommentar gespeichert");
+    if (!ok) { $("#csave").disabled = false; return; }
+    view.composing = null; view.active = comment.id; clearPick(); drawComments();
+    const st = S.stories[view.story], ch = st.index.chapters[view.key];
+    if (!isAuthor(st) && ["eingereicht", "ueberarbeitet"].includes(ch.state)) setState(st, view.key, "in-arbeit", true);
+  });
+}
+
+/* ---------------- writes ---------------- */
+async function saveComments(change, okMsg) {
+  const { story, key } = view;
+  S.busy = true;
+  try {
+    const next = await mutateJson(`${story}/${key}/comments.json`, cur => {
+      const obj = cur && Array.isArray(cur.comments) ? cur : { comments: [] };
+      change(obj.comments);
+      return obj;
+    }, `Lektorat-Seite: ${S.user.login} zu ${story} ${key}`);
+    S.stories[story].comments[key] = next.comments;
+    toast(okMsg);
+    return true;
+  } catch (e) {
+    toast(`Speichern fehlgeschlagen: ${e.message}`, true);
+    return false;
+  } finally { S.busy = false; }
+}
+async function updateComment(id, fn, okMsg) {
+  const ok = await saveComments(list => {
+    const i = list.findIndex(c => c.id === id);
+    if (i < 0) throw new Error("Kommentar nicht mehr da");
+    if (fn) fn(list[i]); else list.splice(i, 1);
+  }, okMsg);
+  if (ok) drawComments();
+}
+async function setState(st, key, state, quiet = false) {
+  S.busy = true;
+  try {
+    const next = await mutateJson(`${st.id}/index.json`, cur => {
+      const idx = cur || st.index;
+      const ch = idx.chapters[key];
+      ch.state = state; ch.state_by = S.user.login; ch.state_at = new Date().toISOString().replace(/\.\d+Z$/, "Z");
+      return idx;
+    }, `Lektorat-Seite: ${st.id} ${key} ${state}`);
+    st.index = next;
+    if (!quiet) toast(`Stand: ${STATES[state]}`);
+    if (view?.type === "reader" && view.story === st.id && view.key === key) {
+      const a = $(".ractions"); if (a) {
+        a.innerHTML = stateButtons(isAuthor(st), state);
+        $$(".ractions [data-state]").forEach(btn => btn.addEventListener("click", () => setState(st, key, btn.dataset.state)));
+      }
+      const p = $(".rmeta .pill"); if (p) p.outerHTML = pill(state);
+    }
+  } catch (e) {
+    toast(`Stand konnte nicht gespeichert werden: ${e.message}`, true);
+  } finally { S.busy = false; }
+}
+
+start();
+</script>
+</body>
+</html>
