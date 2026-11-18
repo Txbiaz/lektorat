@@ -30,6 +30,7 @@
   --pick: rgba(53, 82, 201, .22); --changed: #e0a400;
   --st-eingereicht: #2f6fd6; --st-in-arbeit: #b7791f; --st-kommentiert: #7a4fcf; --st-ueberarbeitet: #0f8a80; --st-erledigt: #2f8a3a;
   --danger: #c0392b; --shadow: 0 1px 2px rgba(30, 25, 15, .06), 0 6px 24px rgba(30, 25, 15, .07);
+  --series: #2a78d6; --good: #006300; --bad: #d03b3b; --stat-icon: #0ca30c;
   --text-font: "Literata", Georgia, "Times New Roman", serif;
   --ui-font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   color-scheme: light;
@@ -42,6 +43,7 @@
     --hl: rgba(255, 190, 40, .26); --hl-active: rgba(255, 150, 20, .45); --hl-done: rgba(200, 200, 200, .12);
     --pick: rgba(125, 149, 242, .28); --changed: #d9a520;
     --st-eingereicht: #6d9cf0; --st-in-arbeit: #e0a64a; --st-kommentiert: #ab8cf0; --st-ueberarbeitet: #3fbfb3; --st-erledigt: #5cbf68;
+    --series: #3987e5; --good: #0ca30c; --bad: #e66767;
     --danger: #ef7a6d; --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 28px rgba(0, 0, 0, .35);
     color-scheme: dark;
   }
@@ -53,7 +55,8 @@
   --hl: rgba(255, 190, 40, .26); --hl-active: rgba(255, 150, 20, .45); --hl-done: rgba(200, 200, 200, .12);
   --pick: rgba(125, 149, 242, .28); --changed: #d9a520;
   --st-eingereicht: #6d9cf0; --st-in-arbeit: #e0a64a; --st-kommentiert: #ab8cf0; --st-ueberarbeitet: #3fbfb3; --st-erledigt: #5cbf68;
-  --danger: #ef7a6d; --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 28px rgba(0, 0, 0, .35);
+  --series: #3987e5; --good: #0ca30c; --bad: #e66767;
+    --danger: #ef7a6d; --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 28px rgba(0, 0, 0, .35);
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
@@ -72,6 +75,15 @@ button { cursor: pointer; }
 .brand { display: flex; align-items: center; gap: 10px; font-weight: 650; letter-spacing: -.01em; text-decoration: none; color: var(--ink); }
 .brand i { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 8px; background: var(--accent); color: var(--accent-ink); font-style: normal; font-weight: 700; font-size: 14px; }
 .bar .spacer { flex: 1; }
+.apptabs { display: flex; gap: 4px; height: 100%; }
+.apptab { display: flex; align-items: center; gap: 9px; padding: 0 10px; color: var(--ink-2); text-decoration: none; font-weight: 600;
+  border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.apptab:hover { color: var(--ink); }
+.apptab.on { color: var(--ink); border-bottom-color: var(--ink); }
+.apptab i { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 8px; background: var(--accent); color: var(--accent-ink);
+  font-style: normal; font-weight: 700; font-size: 14px; }
+.apptab i.green { background: var(--stat-icon); color: #fff; }
+.apptab i svg { width: 17px; height: 17px; }
 .me { display: flex; align-items: center; gap: 8px; color: var(--ink-2); font-size: 14px; }
 .me img { width: 26px; height: 26px; border-radius: 50%; }
 .btn { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line-strong); background: var(--surface);
@@ -246,6 +258,47 @@ textarea { width: 100%; border: 1px solid var(--line-strong); background: var(--
 .loading { padding: 80px 0; text-align: center; color: var(--ink-3); }
 .mobile-fab { display: none; }
 
+/* statistics */
+.warn { color: var(--st-in-arbeit); }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin: 4px 0 18px; }
+.tile { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; box-shadow: var(--shadow); min-width: 0; }
+.tile .tl { display: block; font-size: 12.5px; color: var(--ink-3); font-weight: 600; }
+.tile b { display: block; font: 600 24px/1.25 var(--ui-font); font-variant-numeric: tabular-nums; margin: 2px 0; letter-spacing: -.01em; }
+.tile small { font-size: 12.5px; color: var(--ink-2); }
+.good { color: var(--good); }
+.bad { color: var(--bad); }
+.chartpanel { padding: 16px 18px 12px; }
+.ctrl { display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between; margin-bottom: 12px; }
+.seg { display: inline-flex; background: var(--surface-2); border-radius: 10px; padding: 3px; overflow-x: auto; max-width: 100%; scrollbar-width: none; }
+.seg button { flex: none; border: 0; background: transparent; padding: 5px 11px; border-radius: 8px; font-size: 13.5px; color: var(--ink-2); }
+.seg button.on { background: var(--surface); color: var(--ink); font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,.1); }
+.pnav { display: flex; align-items: center; gap: 6px; margin: 4px 0 6px; }
+.pnav b { font-size: 15px; min-width: 0; }
+.pnav .arrow { font-size: 20px; line-height: 20px; padding: 2px 10px; }
+.kpi { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.kpi b { font: 650 30px/1.2 var(--ui-font); font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+.kpi span { color: var(--ink-2); }
+.kpisub { margin: 2px 0 10px; color: var(--ink-2); font-size: 14px; }
+.chart { position: relative; }
+.chart svg { display: block; overflow: visible; }
+.chart .grid { stroke: var(--line); stroke-width: 1; }
+.chart .zero { stroke: var(--line-strong); stroke-width: 1; }
+.chart .ax { fill: var(--ink-3); font-size: 11.5px; font-variant-numeric: tabular-nums; }
+.chart .col { fill: var(--series); }
+.chart .col.est { fill: color-mix(in srgb, var(--series) 38%, transparent); }
+.chart .col.on { fill: color-mix(in srgb, var(--series) 80%, var(--ink)); }
+.chart .hit { fill: transparent; cursor: pointer; }
+.chart .tip { position: absolute; transform: translateX(-50%); pointer-events: none; background: var(--ink); color: var(--bg); border-radius: 8px;
+  padding: 6px 10px; font-size: 13px; line-height: 1.35; white-space: nowrap; box-shadow: var(--shadow); }
+.chart .tip b, .chart .tip span, .chart .tip small { display: block; }
+.chart .tip small { opacity: .75; }
+.tbl { margin-top: 6px; font-size: 14px; }
+.tbl summary { cursor: pointer; color: var(--ink-2); }
+.tbl table { border-collapse: collapse; margin-top: 8px; width: 100%; max-width: 420px; }
+.tbl td, .tbl th { text-align: left; padding: 4px 8px; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+.tbl td:last-child, .tbl th:last-child { text-align: right; }
+.tbl tr.sum td { font-weight: 650; border-bottom: 0; }
+
 @media (max-width: 980px) {
   .reader { grid-template-columns: minmax(0, 1fr); gap: 0; }
   .text { max-width: none; font-size: 17.5px; }
@@ -261,7 +314,8 @@ textarea { width: 100%; border: 1px solid var(--line-strong); background: var(--
 }
 @media (max-width: 600px) {
   .bar .wrap { gap: 6px; }
-  .me span, #reload span { display: none; }
+  .me span, #reload span, .apptab span { display: none; }
+  .apptab { padding: 0 6px; }
   .page h1, .rhead h1 { font-size: 24px; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
@@ -270,7 +324,10 @@ textarea { width: 100%; border: 1px solid var(--line-strong); background: var(--
 <body>
 <header class="bar">
   <div class="wrap">
-    <a class="brand" href="#/"><i>L</i> Lektorat</a>
+    <nav class="apptabs" aria-label="Bereiche">
+      <a class="apptab on" id="tab-lek" href="#/"><i>L</i><span>Lektorat</span></a>
+      <a class="apptab" id="tab-stat" href="#/statistik" hidden><i class="green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 20V11M12 20V5M18 20v-6"/></svg></i><span>Statistik</span></a>
+    </nav>
     <span class="spacer"></span>
     <span id="me" class="me" hidden></span>
     <button id="reload" class="btn ghost small" title="Neu laden" hidden>
@@ -442,7 +499,7 @@ const isAuthor = st => same(st.index.author, S.user?.login);
 
 /* ---------------- login ---------------- */
 function renderLogin(error = "") {
-  $("#me").hidden = $("#reload").hidden = $("#logout").hidden = true;
+  $("#me").hidden = $("#reload").hidden = $("#logout").hidden = $("#tab-stat").hidden = true;
   const fine = "https://github.com/settings/personal-access-tokens/new";
   const classic = "https://github.com/settings/tokens/new?scopes=repo&description=Lektorat";
   $("#app").innerHTML = `
@@ -496,7 +553,7 @@ async function start(fromLogin = false) {
   if (fromLogin) store.set(TOKEN_KEY, TOKEN);
   const me = $("#me");
   me.innerHTML = `${S.user.avatar_url ? `<img src="${esc(S.user.avatar_url)}" alt="">` : ""}<span>${esc(S.user.login)}</span>`;
-  me.hidden = $("#reload").hidden = $("#logout").hidden = false;
+  me.hidden = $("#reload").hidden = $("#logout").hidden = $("#tab-stat").hidden = false;
   route();
 }
 $("#logout").addEventListener("click", () => {
@@ -505,7 +562,12 @@ $("#logout").addEventListener("click", () => {
 $("#reload").addEventListener("click", () => refresh(true));
 async function refresh(loud = false) {
   if (!TOKEN || !S.user || S.busy) return;
-  try { await loadAll(); route(true); if (loud) toast("Neu geladen"); }
+  try {
+    await loadAll();
+    if (view?.type === "stats") await loadStats(true);
+    route(true);
+    if (loud) toast("Neu geladen");
+  }
   catch (e) { toast(`Laden fehlgeschlagen: ${e.message}`, true); }
 }
 document.addEventListener("visibilitychange", () => {
@@ -517,6 +579,10 @@ let view = null;
 function route(keep = false) {
   if (!S.user) return;
   const parts = location.hash.replace(/^#\/?/, "").split("/").filter(Boolean).map(decodeURIComponent);
+  const stats = parts[0] === "statistik";
+  $("#tab-stat").classList.toggle("on", stats);
+  $("#tab-lek").classList.toggle("on", !stats);
+  if (stats) { renderStats(parts[1]); return; }
   const [story, key, ver] = parts;
   if (story && key && S.stories[story]?.index.chapters?.[key]) {
     const v = ver ? parseInt(ver.replace(/^v/, ""), 10) : null;
@@ -1147,6 +1213,358 @@ async function setState(st, key, state, quiet = false) {
     toast(`Stand konnte nicht gespeichert werden: ${e.message}`, true);
   } finally { S.busy = false; }
 }
+
+/* ---------------- statistics ----------------
+   Data: branch webnovel-stats, written hourly by tools/webnovel/run_local.py on a writer's PC.
+     data/<bookId>.csv       one row per reading: time_utc, chapters, collections, ratings, score, views,
+                             power_stones_week, power_rank_week, power_rank, comments
+     chapters/<bookId>.json  book name, author, chapter list
+   Gains: the last reading of each clock hour; what came in between two readings is credited to the
+   hours in between (evenly when the PC was off, then marked as estimated). Power stones count per
+   WebNovel week, so a drop at the weekly reset is the new week's count, not a loss. */
+const METRICS = [
+  { key: "views", label: "Views" },
+  { key: "collections", label: "Collections" },
+  { key: "power_stones_week", label: "Power Stones", reset: true },
+  { key: "comments", label: "Kommentare" },
+  { key: "ratings", label: "Bewertungen" },
+  { key: "chapters", label: "Kapitel" },
+];
+const PERIODS = [["tag", "Tag"], ["woche", "Woche"], ["monat", "Monat"], ["gesamt", "Gesamt"]];
+const STATS_KEY = "lektorat.stats";
+const HOUR = 3600e3, DAY = 86400e3;
+const ST = { books: null, loadedAt: 0, loading: null };
+const SV = { book: null, metric: "views", period: "tag", anchor: null };
+try { Object.assign(SV, JSON.parse(store.get(STATS_KEY) || "{}"), { anchor: null }); } catch { /* defaults */ }
+const saveSV = () => store.set(STATS_KEY, JSON.stringify({ book: SV.book, metric: SV.metric, period: SV.period }));
+const nf = new Intl.NumberFormat("de-DE");
+const nf1 = new Intl.NumberFormat("de-DE", { maximumFractionDigits: 1 });
+const fmtGain = v => v == null ? "–" : (Math.abs(v) < 10 && Math.round(v) !== v ? nf1.format(v) : nf.format(Math.round(v)));
+const signed = v => v == null ? "–" : (v > 0 ? "+" : v < 0 ? "−" : "±") + fmtGain(Math.abs(v));
+const fmtAxis = v => Math.abs(v) >= 1e6 ? `${nf1.format(v / 1e6)} Mio.` : Math.abs(v) >= 1e4 ? `${nf1.format(v / 1e3)} Tsd.` : nf.format(v);
+const WD = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"];
+const dShort = t => new Date(t).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" });
+const dLong = t => new Date(t).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
+
+async function ghRaw(path) {
+  const r = await fetch(API + path, { cache: "no-store",
+    headers: { Authorization: `Bearer ${TOKEN}`, Accept: "application/vnd.github.raw+json" } });
+  if (!r.ok) { const e = new Error(String(r.status)); e.status = r.status; throw e; }
+  return r.text();
+}
+function parseCsv(text) {
+  const lines = text.trim().split(/\r?\n/);
+  const head = (lines.shift() || "").split(",");
+  return lines.map(l => {
+    const c = l.split(","), o = {};
+    head.forEach((h, i) => { o[h] = c[i] ?? ""; });
+    o.t = Date.parse(o.time_utc);
+    return o;
+  }).filter(o => !isNaN(o.t)).sort((a, b) => a.t - b.t);
+}
+async function loadStats(force = false) {
+  if (ST.books && !force && Date.now() - ST.loadedAt < 300000) return;
+  if (ST.loading) return ST.loading;
+  ST.loading = (async () => {
+    const tree = await gh(`${repoPath}/git/trees/${encodeURIComponent(CFG.statsBranch)}?recursive=1`);
+    const ids = tree.tree.filter(x => x.type === "blob" && /^data\/[^/]+\.csv$/.test(x.path)).map(x => x.path.slice(5, -4));
+    const ref = encodeURIComponent(CFG.statsBranch);
+    const books = await Promise.all(ids.map(async id => {
+      let meta = {};
+      try { meta = JSON.parse(await ghRaw(`${repoPath}/contents/chapters/${encodeURIComponent(id)}.json?ref=${ref}`)); } catch { meta = {}; }
+      const rows = parseCsv(await ghRaw(`${repoPath}/contents/data/${encodeURIComponent(id)}.csv?ref=${ref}`));
+      return { id, name: meta.name || id, author: meta.author || "", chapters: meta.chapters || [], rows, slots: {} };
+    }));
+    ST.books = books.filter(b => b.rows.length).sort((a, b) => a.name.localeCompare(b.name));
+    ST.loadedAt = Date.now();
+  })();
+  try { await ST.loading; } finally { ST.loading = null; }
+}
+const storyOf = book => Object.values(S.stories).find(st => String(st.index.webnovel_book_id) === book.id);
+
+/* time helpers (local time of the viewer) */
+const hourStart = t => { const d = new Date(t); d.setMinutes(0, 0, 0); return d.getTime(); };
+const dayStart = t => { const d = new Date(t); d.setHours(0, 0, 0, 0); return d.getTime(); };
+const addDays = (t, n) => { const d = new Date(t); d.setDate(d.getDate() + n); return d.getTime(); };
+const weekStart = t => addDays(dayStart(t), -((new Date(t).getDay() + 6) % 7));
+const monthStart = t => { const d = new Date(t); return new Date(d.getFullYear(), d.getMonth(), 1).getTime(); };
+const addMonths = (t, n) => { const d = new Date(t); return new Date(d.getFullYear(), d.getMonth() + n, 1).getTime(); };
+function isoWeek(t) {
+  const d = new Date(dayStart(t)); d.setDate(d.getDate() + 3 - ((d.getDay() + 6) % 7));
+  const w1 = new Date(d.getFullYear(), 0, 4);
+  return 1 + Math.round(((d - w1) / DAY - 3 + ((w1.getDay() + 6) % 7)) / 7);
+}
+
+/** Gain per clock hour: Map(hourStart -> {gain, est}). */
+function hourSlots(book, metric) {
+  if (book.slots[metric.key]) return book.slots[metric.key];
+  const last = new Map();
+  for (const r of book.rows) {
+    const v = r[metric.key];
+    if (v === "" || v == null || !isFinite(Number(v))) continue;
+    last.set(hourStart(r.t), Number(v));
+  }
+  const keys = [...last.keys()].sort((a, b) => a - b);
+  const slots = new Map();
+  for (let i = 1; i < keys.length; i++) {
+    const a = keys[i - 1], b = keys[i];
+    const span = Math.round((b - a) / HOUR);
+    if (span < 1) continue;
+    let delta = last.get(b) - last.get(a);
+    if (metric.reset && delta < 0) delta = last.get(b);  // new WebNovel week
+    for (let k = 0; k < span; k++) slots.set(a + k * HOUR, { gain: delta / span, est: span > 1 });
+  }
+  return (book.slots[metric.key] = { slots, first: keys[0], last: keys[keys.length - 1], value: last.get(keys[keys.length - 1]) });
+}
+function sumSlots(slots, from, to) {
+  let s = 0, n = 0, e = 0;
+  for (const [h, x] of slots) if (h >= from && h < to) { s += x.gain; n++; if (x.est) e++; }
+  return { s, n, e, est: e > 0 };
+}
+function periodRange(period, anchor, info) {
+  if (period === "tag") { const f = dayStart(anchor); return [f, addDays(f, 1)]; }
+  if (period === "woche") { const f = weekStart(anchor); return [f, addDays(f, 7)]; }
+  if (period === "monat") { const f = monthStart(anchor); return [f, addMonths(f, 1)]; }
+  return [dayStart(info.first), addDays(dayStart(info.last), 1)];
+}
+function bucketList(period, from, to) {
+  const out = [];
+  if (period === "tag") {
+    for (let h = from; h < to; h += HOUR) {
+      const hr = new Date(h).getHours();
+      out.push({ from: h, to: h + HOUR, label: String(hr), title: `${hr}–${hr + 1} Uhr` });
+    }
+  } else if (period === "woche" || period === "monat" || (period === "gesamt" && to - from <= 62 * DAY)) {
+    for (let d = from; d < to; d = addDays(d, 1)) {
+      const wd = WD[new Date(d).getDay()];
+      out.push({ from: d, to: addDays(d, 1), day: true,
+        label: period === "woche" ? wd.slice(0, 2) : period === "monat" ? String(new Date(d).getDate()) : dShort(d),
+        title: `${wd}, ${dShort(d)}` });
+    }
+  } else {
+    for (let m = monthStart(from); m < to; m = addMonths(m, 1)) {
+      const name = new Date(m).toLocaleDateString("de-DE", { month: "short", year: "2-digit" });
+      out.push({ from: m, to: addMonths(m, 1), month: true, label: name,
+        title: new Date(m).toLocaleDateString("de-DE", { month: "long", year: "numeric" }) });
+    }
+  }
+  return out;
+}
+function periodLabel(period, from, to, info) {
+  if (period === "tag") return `${WD[new Date(from).getDay()]}, ${dLong(from)}`;
+  if (period === "woche") return `KW ${isoWeek(from)} · ${dShort(from)}–${dLong(addDays(to, -1))}`;
+  if (period === "monat") return new Date(from).toLocaleDateString("de-DE", { month: "long", year: "numeric" });
+  return `Seit ${dLong(info.first)}`;
+}
+
+function computePeriod(book, metric, period, anchor) {
+  const info = hourSlots(book, metric);
+  const [from, to] = periodRange(period, anchor, info);
+  const covered = h => h >= info.first && h < info.last;  // slots exist for [first, last)
+  const items = bucketList(period, from, to).map(b => {
+    const lo = Math.max(b.from, info.first), hi = Math.min(b.to, info.last);
+    if (b.from >= info.last || b.to <= info.first || hi <= lo) return { ...b, v: null, future: b.from >= info.last };
+    const r = sumSlots(info.slots, b.from, b.to);
+    const expected = Math.round((hi - lo) / HOUR);
+    const estH = r.e + Math.max(0, expected - r.n);  // hours spread over a gap, or missing
+    // an hour is estimated or not; a day or month only counts as estimated when most of it was
+    const est = b.day || b.month ? estH > expected / 2 : estH > 0;
+    return { ...b, v: r.n ? r.s : null, est, estH: b.day || b.month ? estH : 0, partial: b.to > info.last };
+  });
+  const total = sumSlots(info.slots, from, to);
+  // compare with the period before, up to the same point if this one is still running
+  let prev = null;
+  if (period !== "gesamt") {
+    const [pf] = periodRange(period, period === "tag" ? addDays(from, -1) : period === "woche" ? addDays(from, -7) : addMonths(from, -1), info);
+    const running = to > info.last;
+    const pt = running ? pf + (info.last - from) : from;
+    if (pf >= info.first || covered(pf)) {
+      const p = sumSlots(info.slots, pf, pt);
+      if (p.n) prev = { s: p.s, running, until: pt };
+    }
+  }
+  const hours = Math.max(1, Math.round((Math.min(to, info.last) - Math.max(from, info.first)) / HOUR));
+  return { info, from, to, items, total, prev, hours };
+}
+
+/* ---------------- statistics view ---------------- */
+async function renderStats(bookId) {
+  view = { type: "stats" };
+  if (!ST.books) $("#app").innerHTML = `<div class="loading">Statistik lädt …</div>`;
+  try { await loadStats(); }
+  catch (e) { $("#app").innerHTML = `<div class="loading">Statistik konnte nicht geladen werden: ${esc(e.message)}</div>`; return; }
+  if (view?.type !== "stats") return;
+  if (!ST.books.length) {
+    $("#app").innerHTML = `<div class="page"><h1>Statistik</h1><div class="empty">Noch keine Daten. Werke kommen dazu, sobald sie
+      auf der Lektorat-Seite einen WebNovel-Link haben oder in <code>tools/webnovel/books.json</code> stehen.</div></div>`;
+    return;
+  }
+  if (bookId && ST.books.some(b => b.id === bookId)) SV.book = bookId;
+  if (!ST.books.some(b => b.id === SV.book)) SV.book = ST.books[0].id;
+  if (!METRICS.some(m => m.key === SV.metric)) SV.metric = "views";
+  saveSV();
+  const book = ST.books.find(b => b.id === SV.book);
+  const lastRow = book.rows[book.rows.length - 1];
+  const age = Date.now() - lastRow.t;
+  const story = storyOf(book);
+  const tabs = ST.books.length > 1 ? `<nav class="worktabs" aria-label="Werke">${ST.books.map(b =>
+    `<a class="wtab ${b.id === book.id ? "on" : ""}" href="#/statistik/${esc(b.id)}">${esc(b.name)}</a>`).join("")}</nav>` : "";
+  $("#app").innerHTML = `
+  <div class="page stats">
+    <h1>Statistik</h1>
+    <p class="sub">Von WebNovel, stündlich, solange der PC läuft. Letzte Messung: ${esc(when(new Date(lastRow.t).toISOString()))}${age > 2 * HOUR
+      ? ` <span class="warn">(vor ${Math.round(age / HOUR)} Std.: der PC war wohl aus)</span>` : ""}.</p>
+    ${tabs}
+    <div class="story-head"><h3>${esc(book.name)}</h3>
+      <span class="meta">${esc(book.author)}${book.chapters.length ? ` · ${book.chapters.length} Kapitel` : ""} · gemessen seit ${dLong(book.rows[0].t)}</span>
+      <span class="tools">${story ? `<a href="#/${encodeURIComponent(story.id)}">Im Lektorat</a>` : ""}
+        <a href="https://www.webnovel.com/book/${esc(book.id)}" target="_blank" rel="noopener">WebNovel</a></span></div>
+    <div class="tiles">${statTiles(book, lastRow)}</div>
+    <section class="panel chartpanel">
+      <div class="ctrl">
+        <div class="seg" role="tablist" aria-label="Wert">${METRICS.map(m =>
+          `<button role="tab" data-metric="${m.key}" class="${m.key === SV.metric ? "on" : ""}" aria-selected="${m.key === SV.metric}">${m.label}</button>`).join("")}</div>
+        <div class="seg" role="tablist" aria-label="Zeitraum">${PERIODS.map(([k, l]) =>
+          `<button role="tab" data-period="${k}" class="${k === SV.period ? "on" : ""}" aria-selected="${k === SV.period}">${l}</button>`).join("")}</div>
+      </div>
+      <div id="periodbox"></div>
+    </section>
+  </div>`;
+  $$("[data-metric]").forEach(b => b.addEventListener("click", () => { SV.metric = b.dataset.metric; saveSV(); renderStats(); }));
+  $$("[data-period]").forEach(b => b.addEventListener("click", () => { SV.period = b.dataset.period; SV.anchor = null; saveSV(); renderStats(); }));
+  drawPeriod();
+}
+function statTiles(book, lastRow) {
+  const tile = (label, value, sub, cls = "") => `<div class="tile"><span class="tl">${label}</span><b>${value}</b><small class="${cls}">${sub}</small></div>`;
+  const day = key => {
+    const m = METRICS.find(x => x.key === key), info = hourSlots(book, m);
+    if (info.value == null) return { v: null, g: null };
+    const g = sumSlots(info.slots, info.last - 24 * HOUR, info.last);
+    return { v: info.value, g: g.n ? g.s : null };
+  };
+  const gsub = g => g == null ? "noch kein Vergleich" : `${signed(g)} in 24 Std.`;
+  const gcls = g => g > 0 ? "good" : g < 0 ? "bad" : "";
+  const out = [];
+  for (const [key, label] of [["views", "Views"], ["collections", "Collections"], ["power_stones_week", "Power Stones (Woche)"], ["comments", "Kommentare"]]) {
+    const d = day(key);
+    if (d.v != null) out.push(tile(label, fmtGain(d.v), gsub(d.g), gcls(d.g)));
+  }
+  const rank = lastRow.power_rank, wrank = lastRow.power_rank_week;
+  out.push(tile("Power-Rang", rank ? `#${nf.format(rank)}` : "–", wrank ? `Woche: #${wrank} der Fanfics` : "Woche: nicht in den Top 200"));
+  out.push(tile("Bewertungen", nf.format(Number(lastRow.ratings) || 0), `Score ${lastRow.score || "–"} · ${lastRow.chapters || "?"} Kapitel`));
+  return out.join("");
+}
+function drawPeriod() {
+  const book = ST.books.find(b => b.id === SV.book);
+  const metric = METRICS.find(m => m.key === SV.metric);
+  const info = hourSlots(book, metric);
+  const box = $("#periodbox");
+  if (info.value == null || info.first === info.last) {
+    box.innerHTML = `<div class="empty">Für ${metric.label} gibt es noch keine zwei Messungen.</div>`;
+    return;
+  }
+  const anchor = SV.anchor ?? info.last;
+  const P = computePeriod(book, metric, SV.period, anchor);
+  const unit = SV.period === "tag" ? "Stunde" : P.items[0]?.month ? "Monat" : "Tag";
+  const avgN = SV.period === "tag" ? P.hours : P.items.filter(i => i.v != null).length || 1;
+  const prevTxt = P.prev ? (() => {
+    const pct = P.prev.s ? Math.round((P.total.s - P.prev.s) / Math.abs(P.prev.s) * 100) : null;
+    const what = { tag: "gestern", woche: "letzte Woche", monat: "letzter Monat" }[SV.period];
+    const until = P.prev.running ? ` bis ${SV.period === "tag" ? new Date(P.prev.until).getHours() + " Uhr" : WD[new Date(P.prev.until).getDay()].slice(0, 2) + " " + new Date(P.prev.until).getHours() + " Uhr"}` : "";
+    return `${what}${until}: ${signed(P.prev.s)}${pct == null ? "" : ` · <span class="${pct > 0 ? "good" : pct < 0 ? "bad" : ""}">${pct > 0 ? "▲" : pct < 0 ? "▼" : ""} ${pct > 0 ? "+" : ""}${pct} %</span>`}`;
+  })() : "";
+  const canPrev = SV.period !== "gesamt" && P.from > dayStart(info.first);
+  const canNext = SV.period !== "gesamt" && P.to <= info.last;
+  box.innerHTML = `
+    <div class="pnav">
+      <button class="btn ghost small arrow" id="pprev" ${canPrev ? "" : "disabled"} ${SV.period === "gesamt" ? "hidden" : ""} aria-label="Zurück">‹</button>
+      <b>${periodLabel(SV.period, P.from, P.to, info)}</b>
+      <button class="btn ghost small arrow" id="pnext" ${canNext ? "" : "disabled"} ${SV.period === "gesamt" ? "hidden" : ""} aria-label="Weiter">›</button>
+      ${SV.anchor != null && SV.period !== "gesamt" ? `<button class="btn ghost small" id="pnow">Aktuell</button>` : ""}
+    </div>
+    <div class="kpi"><b>${signed(P.total.n ? P.total.s : null)}</b> <span>${metric.label}${P.to > info.last && SV.period !== "gesamt" ? " bisher" : ""}</span></div>
+    <p class="kpisub">Ø ${signed(P.total.n ? P.total.s / avgN : null)} pro ${unit}${prevTxt ? ` · ${prevTxt}` : ""}${SV.period === "gesamt" ? ` · jetzt ${fmtGain(info.value)} insgesamt` : ""}</p>
+    <div class="chart" id="chart" aria-hidden="false"></div>
+    <p class="note">${metric.label} pro ${unit}. Helle Balken sind geschätzt: Der PC war ${SV.period === "tag" ? "in der Stunde" : "mehr als die Hälfte der Zeit"} aus, der Zuwachs ist gleichmäßig verteilt.
+      ${SV.period === "gesamt" || SV.period === "monat" || SV.period === "woche" ? "Auf einen Balken klicken öffnet den Zeitraum darunter." : ""}
+      ${metric.reset ? "Power Stones zählen je WebNovel-Woche (Start Montag 0 Uhr China-Zeit); der Rücksetzer zählt nicht als Verlust." : ""}
+      ${metric.key === "comments" ? "Kommentare: Summe der Kapitel, die stündlich gezählt werden." : ""}</p>
+    <details class="tbl"><summary>Als Tabelle</summary><table><thead><tr><th>${SV.period === "tag" ? "Stunde" : "Zeitraum"}</th><th>${metric.label}</th></tr></thead><tbody>
+      ${P.items.filter(i => !i.future).map(i => `<tr><td>${esc(i.title)}</td><td>${i.v == null ? "keine Messung" : signed(i.v)}${i.est ? " (geschätzt)" : ""}</td></tr>`).join("")}
+      <tr class="sum"><td>Summe</td><td>${signed(P.total.n ? P.total.s : null)}</td></tr></tbody></table></details>`;
+  const move = dir => {
+    const a = SV.anchor ?? info.last;
+    SV.anchor = SV.period === "tag" ? addDays(a, dir) : SV.period === "woche" ? addDays(a, 7 * dir) : addMonths(monthStart(a), dir);
+    if (SV.anchor > info.last) SV.anchor = null;
+    drawPeriod();
+  };
+  $("#pprev").addEventListener("click", () => move(-1));
+  $("#pnext").addEventListener("click", () => move(1));
+  $("#pnow")?.addEventListener("click", () => { SV.anchor = null; drawPeriod(); });
+  drawBars($("#chart"), P.items, metric, item => {
+    if (item.month) { SV.period = "monat"; SV.anchor = item.from; }
+    else if (item.day) { SV.period = "tag"; SV.anchor = item.from; }
+    else return;
+    saveSV(); renderStats();
+  });
+}
+function niceStep(range, n) {
+  const raw = range / n || 1, p = Math.pow(10, Math.floor(Math.log10(raw))), m = raw / p;
+  return (m <= 1 ? 1 : m <= 2 ? 2 : m <= 2.5 ? 2.5 : m <= 5 ? 5 : 10) * p;
+}
+function drawBars(el, items, metric, onPick) {
+  const W = Math.max(280, Math.round(el.clientWidth)), H = W < 520 ? 210 : 260;
+  const P = { l: 52, r: 8, t: 12, b: 26 };
+  const vals = items.filter(i => i.v != null).map(i => i.v);
+  let max = Math.max(0, ...vals), min = Math.min(0, ...vals);
+  if (max === min) max = min + 1;
+  const step = niceStep(max - min, 4);
+  max = Math.ceil(max / step) * step; min = Math.floor(min / step) * step;
+  const y = v => P.t + (max - v) / (max - min) * (H - P.t - P.b);
+  const cw = (W - P.l - P.r) / items.length, bw = Math.max(2, Math.min(32, cw * 0.7));
+  const every = Math.max(1, Math.ceil(items.length / Math.max(1, Math.floor((W - P.l) / 30))));
+  let svg = "";
+  for (let v = min; v <= max + step / 2; v += step) {
+    const yy = y(v).toFixed(1);
+    svg += `<line x1="${P.l}" x2="${W - P.r}" y1="${yy}" y2="${yy}" class="${Math.abs(v) < step / 2 ? "zero" : "grid"}"/>`
+      + `<text x="${P.l - 6}" y="${yy}" dy="0.32em" text-anchor="end" class="ax">${esc(fmtAxis(Math.round(v * 100) / 100))}</text>`;
+  }
+  items.forEach((it, i) => {
+    const x = P.l + i * cw + (cw - bw) / 2, cx = P.l + i * cw + cw / 2;
+    if (i % every === 0) svg += `<text x="${cx.toFixed(1)}" y="${H - 8}" text-anchor="middle" class="ax">${esc(it.label)}</text>`;
+    if (it.v == null || it.v === 0) return;
+    const y0 = y(0), yv = y(it.v), h = Math.abs(y0 - yv), r = Math.min(4, bw / 2, h);
+    const top = Math.min(y0, yv), bottom = Math.max(y0, yv);
+    const d = it.v > 0
+      ? `M${x},${bottom}V${top + r}Q${x},${top} ${x + r},${top}H${x + bw - r}Q${x + bw},${top} ${x + bw},${top + r}V${bottom}Z`
+      : `M${x},${top}V${bottom - r}Q${x},${bottom} ${x + r},${bottom}H${x + bw - r}Q${x + bw},${bottom} ${x + bw},${bottom - r}V${top}Z`;
+    svg += `<path d="${d}" class="col${it.est ? " est" : ""}" data-i="${i}"/>`;
+  });
+  items.forEach((it, i) => {
+    if (!it.future) svg += `<rect class="hit" data-i="${i}" x="${(P.l + i * cw).toFixed(1)}" y="${P.t}" width="${cw.toFixed(1)}" height="${H - P.t - P.b}"/>`;
+  });
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" role="img" aria-label="${esc(metric.label)} als Balkendiagramm">${svg}</svg><div class="tip" hidden></div>`;
+  const tip = $(".tip", el);
+  const show = (i, ev) => {
+    const it = items[i];
+    $$(".col", el).forEach(b => b.classList.toggle("on", b.dataset.i === String(i)));
+    tip.innerHTML = `<b>${esc(it.title)}</b><span>${it.v == null ? "keine Messung" : `${signed(it.v)} ${esc(metric.label)}`}</span>${it.est && !it.estH ? "<small>geschätzt (PC aus)</small>" : ""}${it.estH ? `<small>davon ${it.estH} Std. geschätzt (PC aus)</small>` : ""}${it.partial ? "<small>läuft noch</small>" : ""}`;
+    tip.hidden = false;
+    const box = el.getBoundingClientRect();
+    const x = Math.min(Math.max(ev.clientX - box.left, 70), box.width - 70);
+    tip.style.left = `${x}px`; tip.style.top = `${Math.max(0, ev.clientY - box.top - 64)}px`;
+  };
+  $$(".hit", el).forEach(h => {
+    h.addEventListener("pointermove", ev => show(+h.dataset.i, ev));
+    h.addEventListener("pointerleave", () => { tip.hidden = true; $$(".col.on", el).forEach(b => b.classList.remove("on")); });
+    h.addEventListener("click", () => { const it = items[+h.dataset.i]; if (it.v != null && onPick) onPick(it); });
+  });
+}
+let resizeTimer;
+window.addEventListener("resize", () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => { if (view?.type === "stats" && $("#chart")) drawPeriod(); }, 150);
+});
 
 start();
 </script>
