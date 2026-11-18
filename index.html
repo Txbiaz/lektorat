@@ -187,7 +187,7 @@ dialog.dlg::backdrop { background: rgba(0, 0, 0, .4); }
 .ractions { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 0; }
 .vnote { margin: 12px 0 0; padding: 10px 12px; background: var(--surface-2); border-radius: 10px; font-size: 14px; color: var(--ink-2); }
 .hint { margin: 18px 0 0; font-size: 13px; color: var(--ink-3); }
-.text { max-width: 690px; margin-top: 26px; font: 18.5px/1.72 var(--text-font); position: relative; }
+.text { max-width: var(--read-width, 690px); margin-top: 26px; font: var(--read-size, 18.5px)/1.72 var(--text-font); position: relative; }
 .text .b { position: relative; margin: 0 0 1em; border-radius: 4px; }
 .text h2.b, .text h3.b { font: 600 22px/1.3 var(--text-font); margin: 1.4em 0 .8em; }
 .text blockquote.b { margin-left: 0; padding-left: 16px; border-left: 3px solid var(--line-strong); color: var(--ink-2); }
@@ -235,6 +235,24 @@ dialog.dlg::backdrop { background: rgba(0, 0, 0, .4); }
 .replies li header { font-size: 12px; }
 .replies p { margin: 2px 0; }
 .card footer { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
+.accepted { display: inline-flex; align-items: center; gap: 4px; font: 600 11.5px var(--ui-font); color: var(--st-erledigt);
+  background: color-mix(in srgb, var(--st-erledigt) 13%, transparent); border-radius: 6px; padding: 1px 7px; margin-left: 6px; text-transform: none; letter-spacing: 0; }
+.edited { font-style: italic; }
+.card form.editform .chips { margin-top: 2px; }
+.readset { position: fixed; z-index: 40; width: 270px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px;
+  box-shadow: var(--shadow); padding: 14px 16px; font-size: 14px; }
+.readset h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-3); margin: 12px 0 6px; font-weight: 650; }
+.readset h3:first-child { margin-top: 0; }
+.readset .row { display: flex; align-items: center; gap: 8px; }
+.readset .row b { min-width: 52px; text-align: center; font-variant-numeric: tabular-nums; }
+.readset .seg { display: flex; }
+.readset .seg button { flex: 1; }
+.resume { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); z-index: 45; display: flex; align-items: center; gap: 10px;
+  background: var(--ink); color: var(--bg); border-radius: 12px; padding: 8px 8px 8px 14px; font-size: 14px; box-shadow: var(--shadow);
+  max-width: calc(100vw - 32px); }
+.resume button { background: transparent; color: inherit; border: 1px solid color-mix(in srgb, var(--bg) 40%, transparent); }
+.resume button:hover { background: color-mix(in srgb, var(--bg) 14%, transparent); }
+.chap .t small .rd { color: var(--st-ueberarbeitet); }
 .card form { margin-top: 8px; }
 textarea { width: 100%; border: 1px solid var(--line-strong); background: var(--bg); border-radius: 9px; padding: 8px 10px; resize: vertical; min-height: 64px; font-size: 14px; line-height: 1.45; }
 .formrow { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
@@ -301,7 +319,7 @@ textarea { width: 100%; border: 1px solid var(--line-strong); background: var(--
 
 @media (max-width: 980px) {
   .reader { grid-template-columns: minmax(0, 1fr); gap: 0; }
-  .text { max-width: none; font-size: 17.5px; }
+  .text { max-width: none; font-size: var(--read-size, 17.5px); }
   .bubble { display: none; }
   .side { position: fixed; inset: auto 0 0 0; top: auto; max-height: 72vh; z-index: 30; background: var(--bg);
     border-top: 1px solid var(--line-strong); border-radius: 16px 16px 0 0; padding: 14px 16px 0; box-shadow: 0 -10px 30px rgba(0,0,0,.18);
@@ -330,6 +348,7 @@ textarea { width: 100%; border: 1px solid var(--line-strong); background: var(--
     </nav>
     <span class="spacer"></span>
     <span id="me" class="me" hidden></span>
+    <button id="readset" class="btn ghost small" type="button" title="Lesen: Schriftgröße, Zeilenbreite, Hell/Dunkel" aria-haspopup="dialog">Aa</button>
     <button id="reload" class="btn ghost small" title="Neu laden" hidden>
       <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg>
       <span>Neu laden</span>
@@ -390,6 +409,96 @@ function toast(msg, err = false) {
   const t = $("#toast");
   t.textContent = msg; t.className = "toast" + (err ? " err" : ""); t.hidden = false;
   clearTimeout(toastTimer); toastTimer = setTimeout(() => (t.hidden = true), err ? 6000 : 2400);
+}
+
+/* ---------------- reading settings (per browser) ---------------- */
+const READ_KEY = "lektorat.read";
+const WIDTHS = [["schmal", "Schmal", 600], ["normal", "Normal", 690], ["breit", "Breit", 840]];
+const READ = { size: 18.5, width: "normal", theme: "auto" };
+try { Object.assign(READ, JSON.parse(store.get(READ_KEY) || "{}")); } catch { /* defaults */ }
+function applyRead() {
+  const root = document.documentElement;
+  if (READ.size !== 18.5) root.style.setProperty("--read-size", `${READ.size}px`); else root.style.removeProperty("--read-size");
+  root.style.setProperty("--read-width", `${(WIDTHS.find(w => w[0] === READ.width) || WIDTHS[1])[2]}px`);
+  if (READ.theme === "auto") delete root.dataset.theme; else root.dataset.theme = READ.theme;
+  store.set(READ_KEY, JSON.stringify(READ));
+}
+applyRead();
+function openReadSettings() {
+  const old = $(".readset");
+  if (old) { old.remove(); return; }
+  const btn = $("#readset"), r = btn.getBoundingClientRect();
+  const box = document.createElement("div");
+  box.className = "readset"; box.setAttribute("role", "dialog"); box.setAttribute("aria-label", "Leseeinstellungen");
+  box.style.top = `${r.bottom + 8}px`;
+  box.style.left = `${Math.max(16, Math.min(r.right - 270, document.documentElement.clientWidth - 286))}px`;
+  const draw = () => {
+    box.innerHTML = `<h3>Schriftgröße</h3>
+      <div class="row"><button class="btn small" data-size="-1" aria-label="Kleiner">A−</button><b>${nf1.format(READ.size)} px</b>
+        <button class="btn small" data-size="1" aria-label="Größer">A+</button>
+        ${READ.size !== 18.5 ? `<button class="btn ghost small" data-size="0">Standard</button>` : ""}</div>
+      <h3>Zeilenbreite</h3>
+      <div class="seg">${WIDTHS.map(([k, l]) => `<button data-width="${k}" class="${READ.width === k ? "on" : ""}">${l}</button>`).join("")}</div>
+      <h3>Darstellung</h3>
+      <div class="seg">${[["auto", "Wie System"], ["light", "Hell"], ["dark", "Dunkel"]].map(([k, l]) =>
+        `<button data-theme-set="${k}" class="${READ.theme === k ? "on" : ""}">${l}</button>`).join("")}</div>`;
+  };
+  draw();
+  box.addEventListener("click", e => {
+    const b = e.target.closest("button");
+    if (!b) return;
+    if (b.dataset.size != null) READ.size = b.dataset.size === "0" ? 18.5 : Math.min(26, Math.max(14, READ.size + Number(b.dataset.size)));
+    if (b.dataset.width) READ.width = b.dataset.width;
+    if (b.dataset.themeSet) READ.theme = b.dataset.themeSet;
+    applyRead(); draw();
+    if (view?.type === "reader") drawComments();  // highlights and bubbles move with the text
+    if (view?.type === "stats" && $("#chart")) drawPeriod();
+  });
+  document.body.appendChild(box);
+  const close = e => { if (!box.contains(e.target) && e.target !== btn) { box.remove(); document.removeEventListener("pointerdown", close); } };
+  setTimeout(() => document.addEventListener("pointerdown", close), 0);
+}
+$("#readset").addEventListener("click", openReadSettings);
+
+/* ---------------- reading position (per browser and chapter) ---------------- */
+const posKey = (story, key) => `lektorat.pos.${story}/${key}`;
+function readPos(story, key) { try { return JSON.parse(store.get(posKey(story, key)) || "null"); } catch { return null; } }
+let posTimer;
+window.addEventListener("scroll", () => {
+  if (view?.type !== "reader" || !view.blocks) return;
+  clearTimeout(posTimer);
+  posTimer = setTimeout(() => {
+    if (view?.type !== "reader") return;
+    const top = 70;
+    const el = $$("#text [data-p]").find(b => b.getBoundingClientRect().bottom > top);
+    if (!el) return;
+    const max = document.documentElement.scrollHeight - innerHeight;
+    const pct = max > 0 ? Math.min(1, scrollY / max) : 1;
+    const old = readPos(view.story, view.key);
+    const furthest = old && old.v === view.v ? Math.max(pct, old.max || 0) : pct;  // a new version starts over
+    store.set(posKey(view.story, view.key), JSON.stringify({ p: +el.dataset.p, v: view.v,
+      pct: Math.round(pct * 100) / 100, max: Math.round(furthest * 100) / 100, at: Date.now() }));
+  }, 400);
+}, { passive: true });
+function restorePosition(story, key) {
+  const pos = readPos(story, key);
+  $(".resume")?.remove();
+  if (!pos || pos.p < 3 || pos.pct >= 0.97) return;  // near the start or finished: begin at the top
+  const el = $(`#text [data-p="${Math.min(pos.p, (view.blocks || []).length - 1)}"]`);
+  if (!el) return;
+  window.scrollTo(0, el.getBoundingClientRect().top + scrollY - 80);
+  const bar = document.createElement("div");
+  bar.className = "resume";
+  bar.innerHTML = `<span>Weiter bei Absatz ${pos.p + 1}${pos.v !== view.v ? ` (gelesen in v${pos.v})` : ""}</span><button class="btn small">Zum Anfang</button>`;
+  bar.querySelector("button").addEventListener("click", () => { window.scrollTo(0, 0); bar.remove(); });
+  document.body.appendChild(bar);
+  setTimeout(() => bar.remove(), 7000);
+}
+function progressText(story, key) {
+  const pos = readPos(story, key);
+  if (!pos) return "";
+  const m = pos.max ?? pos.pct;
+  return m >= 0.97 ? ` · <span class="rd">gelesen ✓</span>` : m >= 0.05 ? ` · <span class="rd">${Math.round(m * 100)} % gelesen</span>` : "";
 }
 
 /* ---------------- GitHub API ---------------- */
@@ -664,7 +773,7 @@ function storyBlock(st) {
     const open = openOf(st.comments[key]).length;
     return `<a class="chap" href="#/${encodeURIComponent(st.id)}/${key}">
       <span class="n">${key === "ch00" ? "Prolog" : num(key)}</span>
-      <span class="t"><b>${esc(lv.title || key)}</b><small>v${lv.v || "?"} · ${esc((lv.date || "").slice(0, 10).split("-").reverse().join("."))} · ${lv.words || "?"} Wörter</small></span>
+      <span class="t"><b>${esc(lv.title || key)}</b><small>v${lv.v || "?"} · ${esc((lv.date || "").slice(0, 10).split("-").reverse().join("."))} · ${lv.words || "?"} Wörter${progressText(st.id, key)}</small></span>
       <span class="count ${open ? "has" : ""}" title="offene Kommentare">${commentIcon()}${open}</span>
       ${pill(ch.state)}${wnBadge(st, key)}</a>`;
   }).join("");
@@ -892,6 +1001,7 @@ async function renderReader(storyId, key, v, keep) {
   <button class="btn primary mobile-fab" id="mfab">${commentIcon()}<span id="mfabn"></span></button>
   <button class="btn primary fab" id="fab" hidden>Kommentieren</button>`;
   window.scrollTo(0, scroll);
+  if (!prevState) restorePosition(storyId, key);
   wireReader(st, key, v, author);
   drawComments();
 }
@@ -974,7 +1084,11 @@ document.addEventListener("pointerdown", e => {
   if (e.target.closest("#fab, .composer, #text")) return;
   clearPick();
 });
-document.addEventListener("keydown", e => { if (e.key === "Escape" && view?.type === "reader") { clearPick(); $("#side")?.classList.remove("open"); } });
+document.addEventListener("keydown", e => {
+  if (e.key !== "Escape") return;
+  $(".readset")?.remove();
+  if (view?.type === "reader") { clearPick(); $("#side")?.classList.remove("open"); }
+});
 
 /* ---------------- comments in the reader ---------------- */
 function anchorFor(c) {
@@ -1045,17 +1159,29 @@ function cardHtml(c, author) {
   return `<article class="card ${c.status !== "offen" ? "done" : ""} ${view.active === c.id ? "active" : ""}" data-id="${esc(c.id)}">
     <header>${c.kind ? `<span class="kind" data-k="${esc(c.kind)}">${esc(c.kind)}</span>` : ""}<b>${esc(c.by)}</b><span>${esc(when(c.at))}</span>${older}${status}</header>
     ${c.quote ? `<div class="q ${c.anchor ? "" : "lost"}" data-jump="1">»${esc(c.quote)}«</div>` : ""}
-    ${c.text ? `<p>${esc(c.text)}</p>` : ""}
-    ${c.suggestion != null && c.suggestion !== "" ? `<div class="sugg"><small>Vorschlag</small>${wordDiff(c.quote || "", c.suggestion)}</div>` : ""}
+    ${c.text ? `<p>${esc(c.text)}${c.edited_at ? ` <small class="edited">(bearbeitet)</small>` : ""}</p>` : ""}
+    ${c.suggestion != null && c.suggestion !== "" ? `<div class="sugg"><small>Vorschlag${c.accepted ? `<span class="accepted" title="${esc(c.accepted.by)} übernimmt den Vorschlag; Claude arbeitet ihn beim nächsten Einarbeiten ein">✓ wird übernommen</span>` : ""}</small>${wordDiff(c.quote || "", c.suggestion)}</div>` : ""}
     ${(c.replies || []).length ? `<ul class="replies">${c.replies.map(r => `<li><header><b>${esc(r.by)}</b> <span>${esc(when(r.at))}</span></header><p>${esc(r.text)}</p></li>`).join("")}</ul>` : ""}
     <footer>
       <button class="btn ghost small" data-act="reply">Antworten</button>
       ${c.status === "offen" ? `<button class="btn ghost small" data-act="done">${author ? "Erledigt" : "Als erledigt markieren"}</button>`
         + (author ? `<button class="btn ghost small" data-act="reject">Abgelehnt</button>` : "")
         : `<button class="btn ghost small" data-act="reopen">Wieder öffnen</button>`}
+      ${author && c.status === "offen" && c.suggestion ? (c.accepted
+        ? `<button class="btn ghost small" data-act="unaccept">Übernahme zurücknehmen</button>`
+        : `<button class="btn ghost small" data-act="accept" title="Claude arbeitet den Vorschlag dann ohne Rückfrage ein">Übernehmen</button>`) : ""}
+      ${own ? `<button class="btn ghost small" data-act="edit">Bearbeiten</button>` : ""}
       ${own && !(c.replies || []).length ? `<button class="btn ghost small danger" data-act="delete">Löschen</button>` : ""}
     </footer>
-    <form hidden><textarea placeholder="Antwort …" required></textarea>
+    ${own ? `<form class="editform" hidden>
+      <div class="chips" role="radiogroup" aria-label="Art">${KINDS.map(k =>
+        `<label><input type="radio" name="kind" value="${k}" ${k === (c.kind || "Anmerkung") ? "checked" : ""}><span>${k}</span></label>`).join("")}</div>
+      <textarea name="text" placeholder="Kommentar">${esc(c.text || "")}</textarea>
+      <label class="check"><input type="checkbox" name="suggon" ${c.suggestion ? "checked" : ""}> Änderung vorschlagen</label>
+      <textarea name="sugg" ${c.suggestion ? "" : "hidden"}>${esc(c.suggestion || c.quote || "")}</textarea>
+      <div class="formrow"><button type="button" class="btn small" data-act="editcancel">Abbrechen</button><button class="btn small primary">Speichern</button></div>
+    </form>` : ""}
+    <form class="replyform" hidden><textarea placeholder="Antwort …" required></textarea>
       <div class="formrow"><button type="button" class="btn small" data-act="cancel">Abbrechen</button><button class="btn small primary">Antworten</button></div></form>
   </article>`;
 }
@@ -1093,16 +1219,35 @@ function wireCards() {
     card.querySelector("[data-jump]")?.addEventListener("click", () => { $("#side").classList.remove("open"); focusComment(id, true); });
     card.addEventListener("click", e => {
       const act = e.target.closest("[data-act]")?.dataset.act;
-      const form = card.querySelector("form");
+      const form = card.querySelector("form.replyform"), edit = card.querySelector("form.editform");
       if (act === "reply") { form.hidden = false; form.querySelector("textarea").focus(); }
       else if (act === "cancel") form.hidden = true;
+      else if (act === "edit" && edit) { edit.hidden = false; edit.text.focus(); }
+      else if (act === "editcancel" && edit) edit.hidden = true;
+      else if (act === "accept") updateComment(id, c => { c.accepted = { by: S.user.login, at: new Date().toISOString().replace(/\.\d+Z$/, "Z") }; }, "Wird übernommen");
+      else if (act === "unaccept") updateComment(id, c => { delete c.accepted; }, "Übernahme zurückgenommen");
       else if (act === "done") updateComment(id, c => setStatus(c, "erledigt"), "erledigt");
       else if (act === "reject") updateComment(id, c => setStatus(c, "abgelehnt"), "abgelehnt");
       else if (act === "reopen") updateComment(id, c => setStatus(c, "offen"), "wieder geöffnet");
       else if (act === "delete") { if (confirm("Diesen Kommentar löschen?")) updateComment(id, null, "gelöscht"); }
       else if (!act && !e.target.closest("form, a, button") && view.active !== id) focusComment(id, false);
     });
-    card.querySelector("form").addEventListener("submit", e => {
+    const edit = card.querySelector("form.editform");
+    if (edit) {
+      edit.suggon.addEventListener("change", () => { edit.sugg.hidden = !edit.suggon.checked; });
+      edit.addEventListener("submit", e => {
+        e.preventDefault();
+        const text = edit.text.value.trim(), sugg = edit.suggon.checked ? edit.sugg.value.trim() : "";
+        if (!text && !sugg) return toast("Bitte einen Kommentar oder einen Vorschlag schreiben.", true);
+        updateComment(id, c => {
+          const newSugg = sugg && sugg !== c.quote ? sugg : null;
+          if (newSugg !== (c.suggestion ?? null)) delete c.accepted;  // a changed suggestion needs a new OK
+          c.text = text; c.kind = edit.kind.value; c.suggestion = newSugg;
+          c.edited_at = new Date().toISOString().replace(/\.\d+Z$/, "Z");
+        }, "Kommentar geändert");
+      });
+    }
+    card.querySelector("form.replyform").addEventListener("submit", e => {
       e.preventDefault();
       const text = e.target.querySelector("textarea").value.trim();
       if (!text) return;
